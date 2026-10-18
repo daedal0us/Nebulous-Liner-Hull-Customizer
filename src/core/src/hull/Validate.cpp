@@ -1,11 +1,13 @@
 #include "nlhc/hull/Validate.h"
 
 #include <QColor>
+#include <QHash>
 #include <QVector3D>
 
 #include <utility>
 
 #include "PieceLookup.h"
+#include "nlhc/hull/DressingLayout.h"
 
 namespace nlhc {
 namespace {
@@ -51,31 +53,44 @@ QVector<Diagnostic> checkConfig(const HullPackage &package, const QString &hullT
     if (!type->editable)
         diagnostics.append(make(Severity::Info, diag::UnsupportedHullType, hullTypeId));
 
+    const Piece *pieces[RandomHullConfig::SegmentCount] = {nullptr, nullptr, nullptr};
     for (int segment = 0; segment < RandomHullConfig::SegmentCount; ++segment) {
         const SegmentConfig &segmentConfig = config.primary[size_t(segment)];
-        const Piece *piece = primaryPiece(package, *type, segment, segmentConfig.key);
-        if (!piece) {
+        pieces[segment] = primaryPiece(package, *type, segment, segmentConfig.key);
+        if (!pieces[segment]) {
             diagnostics.append(make(Severity::Error, diag::UnknownSegment,
                                     segmentConfig.key.isEmpty() ? QStringLiteral("no key") : segmentConfig.key,
                                     segment));
-            continue;
         }
+    }
 
-        const int pointCount = piece->dressingPoints.size();
-        const int configured = segmentConfig.dressing.size();
-        if (configured < pointCount) {
+    // The core array also carries the bow/stern dressing points, because the game parents
+    // them under the core before loading configurations.
+    for (int segment = 0; segment < RandomHullConfig::SegmentCount; ++segment) {
+        if (!pieces[segment])
+            continue;
+        const QVector<DressingSlotRef> expected = dressingSlots(segment, pieces[0], pieces[1], pieces[2]);
+        const QVector<int> &dressing = config.primary[size_t(segment)].dressing;
+        if (dressing.size() != expected.size()) {
             diagnostics.append(make(Severity::Warning, diag::DressingLengthMismatch,
-                                    QStringLiteral("%1 of %2 dressing points configured").arg(configured).arg(pointCount),
+                                    QStringLiteral("%1 configured, %2 expected")
+                                        .arg(dressing.size())
+                                        .arg(expected.size()),
                                     segment));
         }
-        const int limit = qMin(configured, pointCount);
-        for (int point = 0; point < limit; ++point) {
-            const int choice = segmentConfig.dressing.at(point);
-            const int highest = highestChoice(piece->dressingPoints.at(point));
+        const int limit = qMin(dressing.size(), expected.size());
+        for (int index = 0; index < limit; ++index) {
+            const DressingSlotRef &slot = expected.at(index);
+            const Piece *owner = slot.ownerSegment == 0 ? pieces[0]
+                : (slot.ownerSegment == 1 ? pieces[1] : pieces[2]);
+            if (!owner || slot.pointIndex >= owner->dressingPoints.size())
+                continue;
+            const int highest = highestChoice(owner->dressingPoints.at(slot.pointIndex));
+            const int choice = dressing.at(index);
             if (choice < 0 || choice > highest) {
                 diagnostics.append(make(Severity::Warning, diag::DressingOutOfRange,
-                                        QStringLiteral("choice %1, valid 0..%2").arg(choice).arg(highest), segment,
-                                        point));
+                                        QStringLiteral("choice %1, valid 0..%2").arg(choice).arg(highest),
+                                        slot.ownerSegment, slot.pointIndex));
             }
         }
     }
@@ -134,25 +149,47 @@ bool repairConfig(const HullPackage &package, const QString &hullTypeId, RandomH
             changed = true;
         }
 
-        const int pointCount = piece->dressingPoints.size();
-        if (segmentConfig.dressing.size() > pointCount) {
-            segmentConfig.dressing.resize(pointCount);
+    }
+
+    const Piece *pieces[RandomHullConfig::SegmentCount] = {
+        primaryPiece(package, *type, 0, config->primary[0].key),
+        primaryPiece(package, *type, 1, config->primary[1].key),
+        primaryPiece(package, *type, 2, config->primary[2].key),
+    };
+    for (int segment = 0; segment < RandomHullConfig::SegmentCount; ++segment) {
+        QVector<int> &dressing = config->primary[size_t(segment)].dressing;
+        const QVector<DressingSlotRef> expected = dressingSlots(segment, pieces[0], pieces[1], pieces[2]);
+        if (dressing.size() > expected.size()) {
+            dressing.resize(expected.size());
             changed = true;
         }
-        while (segmentConfig.dressing.size() < pointCount) {
-            segmentConfig.dressing.append(0);
+        while (dressing.size() < expected.size()) {
+            const DressingSlotRef &slot = expected.at(dressing.size());
+            const Piece *owner = slot.ownerSegment == 0 ? pieces[0]
+                : (slot.ownerSegment == 1 ? pieces[1] : pieces[2]);
+            const QVector<int> &ownArray = config->primary[size_t(slot.ownerSegment)].dressing;
+            int seed = 0;
+            if (owner && slot.ownerSegment != segment && slot.pointIndex < ownArray.size())
+                seed = ownArray.at(slot.pointIndex);
+            dressing.append(seed);
             changed = true;
         }
-        for (int point = 0; point < pointCount; ++point) {
-            const int highest = highestChoice(piece->dressingPoints.at(point));
-            const int current = segmentConfig.dressing.at(point);
-            const int repaired = highest < 0 ? 0 : qBound(0, current, highest);
-            if (repaired != current) {
-                segmentConfig.dressing[point] = repaired;
+        for (int index = 0; index < expected.size(); ++index) {
+            const DressingSlotRef &slot = expected.at(index);
+            const Piece *owner = slot.ownerSegment == 0 ? pieces[0]
+                : (slot.ownerSegment == 1 ? pieces[1] : pieces[2]);
+            if (!owner || slot.pointIndex >= owner->dressingPoints.size())
+                continue;
+            const int highest = highestChoice(owner->dressingPoints.at(slot.pointIndex));
+            const int repaired = highest < 0 ? 0 : qBound(0, dressing.at(index), highest);
+            if (repaired != dressing.at(index)) {
+                dressing[index] = repaired;
                 changed = true;
             }
         }
     }
+    if (normalizeDressing(pieces[0], pieces[1], pieces[2], config))
+        changed = true;
 
     QVector<SecondaryConfig> kept;
     kept.reserve(config->secondary.size());
@@ -202,6 +239,7 @@ RandomHullConfig randomizeConfig(const HullPackage &package, const QString &hull
     if (!type)
         return config;
 
+    const Piece *pieces[RandomHullConfig::SegmentCount] = {nullptr, nullptr, nullptr};
     for (int segment = 0; segment < RandomHullConfig::SegmentCount; ++segment) {
         SegmentConfig &segmentConfig = config.primary[size_t(segment)];
         const QVector<const Piece *> candidates =
@@ -210,9 +248,31 @@ RandomHullConfig randomizeConfig(const HullPackage &package, const QString &hull
             continue;
         const Piece *piece = candidates.at(int(rng.bounded(int(candidates.size()))));
         segmentConfig.key = piece->key;
-        for (const DressingPoint &point : piece->dressingPoints) {
-            const int highest = highestChoice(point);
-            segmentConfig.dressing.append(highest <= 0 ? 0 : int(rng.bounded(highest + 1)));
+        pieces[segment] = piece;
+    }
+
+    QHash<qint64, int> chosen;
+    for (int segment = 0; segment < RandomHullConfig::SegmentCount; ++segment) {
+        if (!pieces[segment])
+            continue;
+        QVector<int> &dressing = config.primary[size_t(segment)].dressing;
+        dressing.clear();
+        for (const DressingSlotRef &slot : dressingSlots(segment, pieces[0], pieces[1], pieces[2])) {
+            const Piece *owner = slot.ownerSegment == 0 ? pieces[0]
+                : (slot.ownerSegment == 1 ? pieces[1] : pieces[2]);
+            int value = 0;
+            if (owner && slot.pointIndex < owner->dressingPoints.size()) {
+                const qint64 key = (qint64(slot.ownerSegment) << 32) | quint32(slot.pointIndex);
+                const auto known = chosen.constFind(key);
+                if (known != chosen.cend()) {
+                    value = known.value();
+                } else {
+                    const int highest = highestChoice(owner->dressingPoints.at(slot.pointIndex));
+                    value = highest <= 0 ? 0 : int(rng.bounded(highest + 1));
+                    chosen.insert(key, value);
+                }
+            }
+            dressing.append(value);
         }
     }
 

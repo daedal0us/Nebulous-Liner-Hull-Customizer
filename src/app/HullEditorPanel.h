@@ -37,6 +37,7 @@ private:
     void rebuildSecondary();
     void syncFromConfig();
     void notifyChanged();
+    void normalizeAfterPieceChange();
     const Piece *pieceForSegment(int segment) const;
 
     const HullPackage *m_package = nullptr;

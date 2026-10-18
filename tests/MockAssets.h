@@ -373,12 +373,15 @@ inline RandomHullConfig bulkConfig()
     return config;
 }
 
+// The game stores the bow's dressing points in the core array too (the bow is a child of
+// the core when LoadConfiguration runs), so a well-formed config carries them in both.
 inline RandomHullConfig dressingConfig(const QVector<int> &dressing)
 {
     RandomHullConfig config;
     config.primary[0].key = keyDressingBow();
     config.primary[0].dressing = dressing;
     config.primary[1].key = keyDressingCore();
+    config.primary[1].dressing = dressing;
     config.primary[2].key = keyStern();
     return config;
 }

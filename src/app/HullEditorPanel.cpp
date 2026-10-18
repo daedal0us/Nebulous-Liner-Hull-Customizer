@@ -10,6 +10,8 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 
+#include "nlhc/hull/DressingLayout.h"
+
 namespace nlhc {
 namespace {
 
@@ -53,8 +55,11 @@ HullEditorPanel::HullEditorPanel(QWidget *parent)
             if (m_updating || !m_segmentBoxes[i])
                 return;
             const QVariant data = m_segmentBoxes[i]->itemData(index);
+            if (m_config.primary[i].key == data.toString())
+                return;
             m_config.primary[i].key = data.toString();
             m_config.primary[i].dressing.clear();
+            normalizeAfterPieceChange();
             rebuildDressing();
             notifyChanged();
         });
@@ -166,65 +171,72 @@ void HullEditorPanel::rebuildDressing()
 {
     clearLayout(m_dressingLayout);
     m_dressingHint->clear();
-
-    int totalPoints = 0;
-    for (int segment = 0; segment < 3; ++segment) {
-        const Piece *piece = pieceForSegment(segment);
-        if (!piece)
-            continue;
-        for (const DressingPoint &point : piece->dressingPoints) {
-            ++totalPoints;
-            auto *row = new QWidget(m_dressingContainer);
-            auto *rowLayout = new QHBoxLayout(row);
-            rowLayout->setContentsMargins(0, 0, 0, 0);
-            auto *label = new QLabel(QStringLiteral("%1 · %2").arg(segmentName(segment)).arg(point.index), row);
-            auto *box = new QComboBox(row);
-            box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-            box->setMinimumContentsLength(10);
-            for (int i = 0; i < point.variantNames.size(); ++i)
-                box->addItem(QStringLiteral("%1 %2").arg(i + 1).arg(point.variantNames.at(i)), i);
-            if (box->count() == 0) {
-                for (int i = 0; i < point.variants.size(); ++i)
-                    box->addItem(QString::number(i), i);
-            }
-            if (point.allowEmpty)
-                box->addItem(tr("(empty)"), point.variants.size());
-
-            int current = 0;
-            if (segment < 3 && point.index < m_config.primary[segment].dressing.size())
-                current = m_config.primary[segment].dressing.at(point.index);
-            const int found = box->findData(current);
-            if (found >= 0) {
-                box->setCurrentIndex(found);
-            } else {
-                box->addItem(tr("invalid (%1)").arg(current), current);
-                box->setCurrentIndex(box->count() - 1);
-            }
-            const int guardSegment = segment;
-            const int guardPoint = point.index;
-            connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-                    [this, box, guardSegment, guardPoint](int) {
-                        if (m_updating)
-                            return;
-                        QVector<int> &dressing = m_config.primary[guardSegment].dressing;
-                        const Piece *piece = pieceForSegment(guardSegment);
-                        if (!piece)
-                            return;
-                        if (dressing.size() <= guardPoint)
-                            dressing.resize(piece->dressingPoints.size());
-                        dressing[guardPoint] = box->currentData().toInt();
-                        notifyChanged();
-                    });
-            rowLayout->addWidget(label);
-            rowLayout->addWidget(box, 1);
-            m_dressingLayout->addWidget(row);
-        }
+    if (!m_package || !m_hullType) {
+        setEnabled(m_editable);
+        return;
     }
 
-    if (totalPoints == 0)
+    const QVector<DressingBinding> bindings =
+        bindDressing(pieceForSegment(0), pieceForSegment(1), pieceForSegment(2), m_config);
+
+    if (bindings.isEmpty())
         m_dressingHint->setText(tr("The selected pieces have no dressing points."));
+
+    for (const DressingBinding &binding : bindings) {
+        if (!binding.point)
+            continue;
+        const DressingPoint &point = *binding.point;
+
+        auto *row = new QWidget(m_dressingContainer);
+        auto *rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(0, 0, 0, 0);
+        auto *label = new QLabel(QStringLiteral("%1 · %2").arg(segmentName(binding.ownerSegment)).arg(binding.pointIndex + 1), row);
+        auto *box = new QComboBox(row);
+        box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        box->setMinimumContentsLength(10);
+        for (int i = 0; i < point.variantNames.size(); ++i)
+            box->addItem(QStringLiteral("%1 %2").arg(i + 1).arg(point.variantNames.at(i)), i);
+        if (box->count() == 0) {
+            for (int i = 0; i < point.variants.size(); ++i)
+                box->addItem(QString::number(i), i);
+        }
+        if (point.allowEmpty)
+            box->addItem(tr("(empty)"), point.variants.size());
+
+        const int highest = point.allowEmpty ? point.variants.size() : point.variants.size() - 1;
+        const int current = binding.known ? binding.value : -1;
+        const int found = box->findData(current);
+        if (found >= 0) {
+            box->setCurrentIndex(found);
+        } else {
+            box->addItem(current < 0 ? tr("not configured") : tr("invalid (%1)").arg(current), current);
+            box->setCurrentIndex(box->count() - 1);
+        }
+        Q_UNUSED(highest)
+
+        connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, box, binding](int) {
+            if (m_updating)
+                return;
+            applyDressingValue(binding, box->currentData().toInt(), &m_config);
+            notifyChanged();
+        });
+        rowLayout->addWidget(label);
+        rowLayout->addWidget(box, 1);
+        m_dressingLayout->addWidget(row);
+    }
+
     m_dressingLayout->addStretch(1);
     setEnabled(m_editable);
+}
+
+void HullEditorPanel::normalizeAfterPieceChange()
+{
+    if (!m_package || !m_hullType)
+        return;
+    const Piece *bow = pieceForSegment(0);
+    const Piece *core = pieceForSegment(1);
+    const Piece *stern = pieceForSegment(2);
+    normalizeDressing(bow, core, stern, &m_config);
 }
 
 void HullEditorPanel::rebuildSecondary()

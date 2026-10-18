@@ -105,7 +105,9 @@ QVector<DressingBinding> bindDressing(const Piece *bow, const Piece *core, const
                 effective = ownerArray.at(ownSlot);
 
             binding.known = effective.has_value();
-            binding.value = qBound(0, effective.value_or(0), qMax(0, highestChoice(*binding.point)));
+            // Keep the raw value: an out-of-range choice empties the point in game, and the
+            // validator must be able to report it. Clamping happens on explicit edits/repair.
+            binding.value = effective.value_or(0);
             bindings.append(binding);
         }
     }
@@ -128,12 +130,15 @@ bool normalizeDressing(const Piece *bow, const Piece *core, const Piece *stern, 
     }
 
     for (const DressingBinding &binding : bindDressing(bow, core, stern, *config)) {
+        if (!binding.point)
+            continue;
+        const int clamped = qBound(0, binding.value, qMax(0, highestChoice(*binding.point)));
         for (const auto &location : binding.storage) {
             if (location.second >= config->primary[size_t(location.first)].dressing.size())
                 continue;
             QVector<int> &target = config->primary[size_t(location.first)].dressing;
-            if (target.at(location.second) != binding.value) {
-                target[location.second] = binding.value;
+            if (target.at(location.second) != clamped) {
+                target[location.second] = clamped;
                 changed = true;
             }
         }

@@ -124,27 +124,6 @@ QVector<bool> visibleNodes(const Piece &piece, const QVector<std::optional<int>>
     return visible;
 }
 
-QVector<Diagnostic> dressingDiagnostics(const QVector<DressingBinding> &bindings)
-{
-    QVector<Diagnostic> diagnostics;
-    for (const DressingBinding &binding : bindings) {
-        if (!binding.point)
-            continue;
-        const int variants = binding.point->variants.size();
-        const int highest = binding.point->allowEmpty ? variants : variants - 1;
-        if (!binding.known) {
-            continue; // reported by Validate with more context
-        }
-        if (binding.value < 0 || binding.value > highest) {
-            diagnostics.append(makeDiagnostic(
-                Severity::Warning, diag::DressingOutOfRange,
-                QStringLiteral("choice %1 of %2 variants").arg(binding.value).arg(highest + 1),
-                binding.ownerSegment, binding.pointIndex));
-        }
-    }
-    return diagnostics;
-}
-
 struct PendingItem
 {
     const MeshData *mesh = nullptr;
@@ -180,7 +159,6 @@ AssemblyResult HullAssembler::assemble(const HullPackage &package, const QString
 
     const QVector<DressingBinding> bindings =
         bindDressing(segments[0], segments[1], segments[2], config);
-    result.diagnostics += dressingDiagnostics(bindings);
 
     // Pure translation layout: bow.aftSnap meets core.foreSnap, stern.foreSnap meets core.aftSnap.
     QVector3D offsets[RandomHullConfig::SegmentCount];

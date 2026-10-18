@@ -1,5 +1,6 @@
 #include <QtTest>
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -8,6 +9,7 @@
 
 #include "nlhc/asset/HullPackage.h"
 #include "nlhc/fleet/FleetDocument.h"
+#include "nlhc/hull/DressingLayout.h"
 #include "nlhc/hull/HullAssembler.h"
 #include "nlhc/hull/Validate.h"
 
@@ -138,6 +140,80 @@ private slots:
             for (const nlhc::DrawItem &item : result.items)
                 QVERIFY2(item.mesh && !item.mesh->indices.isEmpty(), qPrintable(ship.name));
         }
+    }
+
+    void dressingEditsSurviveRoundTrip()
+    {
+        nlhc::HullPackage package;
+        QString error;
+        if (!package.load(assetRoot(), &error) || package.hullTypes().isEmpty())
+            QSKIP("asset package not generated yet");
+
+        nlhc::FleetDocument document;
+        QVector<nlhc::Diagnostic> diagnostics;
+        QVERIFY(document.load(samplePath(QStringLiteral("bulk-liner-sample.fleet")), &diagnostics, &error));
+        document.setPackage(&package);
+        QVERIFY(document.shipCount() > 0);
+
+        nlhc::ShipRecord ship = document.ship(0);
+        auto config = document.hullConfig(0);
+        QVERIFY(config.has_value());
+
+        const nlhc::HullTypeDef *type = package.hullType(ship.hullType);
+        QVERIFY(type);
+        const auto findPiece = [&package](const QStringList &ids, const QString &key) -> const nlhc::Piece * {
+            for (const QString &id : ids) {
+                const nlhc::Piece *piece = package.piece(id);
+                if (piece && piece->key == key)
+                    return piece;
+            }
+            return nullptr;
+        };
+        const nlhc::Piece *bow = findPiece(type->bows, config->primary[0].key);
+        const nlhc::Piece *core = findPiece(type->cores, config->primary[1].key);
+        const nlhc::Piece *stern = findPiece(type->sterns, config->primary[2].key);
+        QVERIFY(bow && core && stern);
+
+        nlhc::normalizeDressing(bow, core, stern, &*config); // sample files may already be consistent
+        const QVector<nlhc::DressingBinding> bindings = nlhc::bindDressing(bow, core, stern, *config);
+        QVERIFY(!bindings.isEmpty());
+
+        nlhc::DressingBinding target;
+        bool found = false;
+        for (const nlhc::DressingBinding &binding : bindings) {
+            if (binding.point && binding.point->variants.size() > 1) {
+                target = binding;
+                found = true;
+                break;
+            }
+        }
+        QVERIFY2(found, "no dressing point with more than one variant");
+
+        const int newValue = (target.value + 1) % qMax(1, target.point->variants.size());
+        nlhc::applyDressingValue(target, newValue, &*config);
+        document.setHullConfig(0, *config);
+
+        // %TEMP% is not usable in this environment, so keep the scratch file next to the binary.
+        const QString path = QDir(QCoreApplication::applicationDirPath())
+                                 .filePath(QStringLiteral("nlhc-roundtrip-test.fleet"));
+        QFile::remove(path);
+        QVERIFY2(document.save(path, &error), qPrintable(error));
+
+        nlhc::FleetDocument reloaded;
+        QVERIFY(reloaded.load(path, &diagnostics, &error));
+        reloaded.setPackage(&package);
+        const auto reloadedConfig = reloaded.hullConfig(0);
+        QVERIFY(reloadedConfig.has_value());
+        for (const nlhc::DressingBinding &binding : bindings) {
+            if (binding.ownerSegment != target.ownerSegment || binding.pointIndex != target.pointIndex)
+                continue;
+            for (const auto &location : binding.storage) {
+                const QVector<int> &array = reloadedConfig->primary[size_t(location.first)].dressing;
+                QVERIFY(location.second < array.size());
+                QCOMPARE(array.at(location.second), newValue);
+            }
+        }
+        QFile::remove(path);
     }
 
     void packageMatchesCatalogShape()
