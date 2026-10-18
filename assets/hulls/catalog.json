@@ -24109,15 +24109,17 @@
     0.7285,
     0.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0003.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
-   "mask": "",
+   "albedoMix": 1.0,
+   "mask": "mask/0003.png",
    "maskChannel": "r",
-   "maskInvert": false,
+   "maskInvert": true,
    "trimBaked": false,
    "metallic": 0.0,
-   "smoothness": 0.5
+   "smoothness": 0.5,
+   "normal": "normal/0003.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0004",

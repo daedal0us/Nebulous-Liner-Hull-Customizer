@@ -277,6 +277,15 @@ def file_sha256(path, chunk=1 << 20):
     return digest.hexdigest()
 
 
+def _referenced_materials(data, material_ids):
+    """Material pathIDs the component payload points at (PPtr = file id + int64 path id)."""
+    found = []
+    for path_id in material_ids:
+        if struct.pack("<q", path_id) in data and path_id not in found:
+            found.append(path_id)
+    return found
+
+
 def segment_textures(graph, catalog, log):
     """Addressable texture GUIDs of the hull segment materials.
 
@@ -302,11 +311,14 @@ def segment_textures(graph, catalog, log):
         if info is None:
             continue
         data = serialized_file.object_data(info)
-        target = _referenced_material(data, material_ids)
         pairs = _guid_pairs(data)
-        if target is None or not pairs:
+        if not pairs:
             continue
-        tables.setdefault(target, {}).update(pairs)
+        # One segment component describes the maps of every material under it. Binding the table
+        # only to the first one left most hull materials without a mask GUID, so they fell back to
+        # the filename convention and picked up a neighbouring variant's paint mask.
+        for target in _referenced_materials(data, material_ids):
+            tables.setdefault(target, {}).update(pairs)
 
     roots = {}
     for path_id, table in tables.items():
