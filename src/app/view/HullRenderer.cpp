@@ -44,6 +44,11 @@ const char *kFragmentShader = R"GLSL(
 #version 330 core
 in vec3 vNormal;
 in vec2 vUv;
+
+// The exported PNGs carry Unity's bottom-up rows in a top-down file, so every map has to be
+// sampled with V inverted. Hull plating is orientation-free and hides this; the doodads atlas
+// (with its red signage) exposes it, which is what put lettering on the cargo crates.
+vec2 textureUv() { return vec2(vUv.x, 1.0 - vUv.y); }
 in float vTrim;
 in vec3 vWorld;
 
@@ -88,7 +93,7 @@ out vec4 fragColor;
 
 float maskValue()
 {
-    vec4 texel = texture(uMask, vUv);
+    vec4 texel = texture(uMask, textureUv());
     float value = texel.r;
     if (uMaskChannel == 1) value = texel.g;
     else if (uMaskChannel == 2) value = texel.b;
@@ -103,13 +108,14 @@ void main()
         return;
     }
 
+    vec2 uvTex = textureUv();
     vec3 normal = normalize(vNormal);
     if (uHasNormalMap) {
         // Meshes carry no tangents: build a TBN from screen space derivatives.
         vec3 dp1 = dFdx(vWorld);
         vec3 dp2 = dFdy(vWorld);
-        vec2 duv1 = dFdx(vUv);
-        vec2 duv2 = dFdy(vUv);
+        vec2 duv1 = dFdx(uvTex);
+        vec2 duv2 = dFdy(uvTex);
         vec3 dp2perp = cross(dp2, normal);
         vec3 dp1perp = cross(normal, dp1);
         vec3 tangent = dp2perp * duv1.x + dp1perp * duv2.x;
@@ -120,7 +126,7 @@ void main()
             float scale = inversesqrt(longest);
             tangent *= scale;
             bitangent *= scale;
-            vec3 sampled = texture(uNormalMap, vUv).xyz * 2.0 - 1.0;
+            vec3 sampled = texture(uNormalMap, uvTex).xyz * 2.0 - 1.0;
             sampled.xy *= uNormalStrength;
             normal = normalize(mat3(tangent, bitangent, normal) * sampled);
         }
@@ -136,7 +142,7 @@ void main()
 
     vec3 albedoSample = vec3(1.0);
     if (uHasAlbedo)
-        albedoSample = texture(uAlbedo, vUv).rgb;
+        albedoSample = texture(uAlbedo, uvTex).rgb;
 
     vec3 color;
     if (uPainted) {
@@ -166,7 +172,7 @@ void main()
     }
     // Authored nameplate decal (hull numbers, lettering) laid over paint and fixed surfaces.
     if (uHasDecal) {
-        vec4 decalSample = texture(uDecal, vUv);
+        vec4 decalSample = texture(uDecal, uvTex);
         float amount = uDecalUseAlpha
             ? decalSample.a
             : smoothstep(0.30, 0.70, dot(decalSample.rgb, vec3(0.2990, 0.5870, 0.1140)));
