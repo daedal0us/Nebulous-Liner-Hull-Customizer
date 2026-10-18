@@ -104,6 +104,23 @@ private slots:
         QVERIFY(blueAverage.blue() > redAverage.blue() + 20);
     }
 
+    // Unpainted props (copper doodads, deck plating) must ignore the livery colours entirely.
+    void fixedMaterialIgnoresTrim()
+    {
+        const nlhc::AssemblyResult assembly = nlhc::demo::buildFixedOnlyAssembly();
+        nlhc::RenderStyle green;
+        green.trimColor = QColor(0x00, 0xff, 0x00);
+        nlhc::RenderStyle magenta;
+        magenta.trimColor = QColor(0xff, 0x00, 0xff);
+
+        QString error;
+        const QImage first = nlhc::OffscreenRenderer::renderSplit(nullptr, assembly, green, QSize(320, 240), &error);
+        QVERIFY2(!first.isNull(), qPrintable(error));
+        const QImage second = nlhc::OffscreenRenderer::renderSplit(nullptr, assembly, magenta, QSize(320, 240), &error);
+        QVERIFY2(!second.isNull(), qPrintable(error));
+        QCOMPARE(first, second);
+    }
+
     void renderIsDeterministic()
     {
         const nlhc::AssemblyResult assembly = nlhc::demo::buildDemoAssembly();

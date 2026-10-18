@@ -12,6 +12,11 @@
 namespace nlhc {
 
 // Left pane: orthographic side view. Right pane: orbit view with mouse rotation.
+// The side view is a fixed reference strip (the game's editor shows it small); the 3D
+// pane takes the rest and is the only interactive one.
+inline constexpr double kSidePaneFraction = 0.28;
+inline constexpr float kOrbitDegreesPerPixel = 0.15f;
+
 class HullViewport : public QOpenGLWidget
 {
     Q_OBJECT

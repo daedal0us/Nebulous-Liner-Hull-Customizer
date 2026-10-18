@@ -12,6 +12,11 @@ struct RenderStyle
     QColor hullTint = QColor(153, 153, 153);
     bool outline = true;
     bool showGrid = false;
+
+    // Colour model for livery surfaces (see HullRenderer's fragment shader).
+    float albedoDetail = 0.55f;   // how strongly the albedo modulates the paint
+    float decalStrength = 0.85f;  // near-white albedo pixels kept as white markings
+    float exposure = 1.35f;       // lifts the paint to the brightness the game shows
 };
 
 } // namespace nlhc

@@ -38,9 +38,10 @@ HULLS = {
 IDENTITY_NODE = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), (1.0, 1.0, 1.0))
 
 #: Materials that are pure functional props (emitters, glazing) and never take
-#: the faction livery.  Everything a hull piece references is paintable by
-#: default: leaving a hull surface unpaintable makes the Container liners render
-#: flat white, because their albedo lives in an addressable bundle we do not have.
+#: the faction livery.  Only consulted when the hull segment components cannot be
+#: parsed (see livery_materials); otherwise livery membership comes from the game
+#: data itself, because a hull piece referencing a material does not mean the
+#: game recolours it (doodads, cranes and side tanks keep a copper tint).
 FUNCTIONAL_MATERIALS = ("engine glow", "window", "light", "lamp", "flare",
                         "emissive", "thruster glow", "fx")
 
@@ -73,6 +74,94 @@ DEFAULT_SIZES = {"albedo": 512, "mask": 512, "normal": 512}
 def is_functional_material(name):
     lowered = (name or "").lower()
     return any(pattern in lowered for pattern in FUNCTIONAL_MATERIALS)
+
+
+#: Fields on a segment component naming the material the game clones before
+#: recolouring it: the tint pass only affects the clone.
+LIVERY_MATERIAL_FIELDS = ("_originalMaterial", "_originalMaterials")
+#: Renderer classes an _additionalMaterialTargets entry may reference.
+RENDERER_CLASSES = (hierarchy.CLASS_MESH_RENDERER, 137)
+
+
+def _pptr_or_list(value):
+    """pathIDs of a serialized field that holds a single PPtr or a PPtr array."""
+    if isinstance(value, dict):
+        path_id = hierarchy.pptr_path_id(value)
+        return [path_id] if path_id else []
+    return hierarchy.pptr_list(value)
+
+
+def _renderer_materials(graph, path_id):
+    """Material pathIDs of a PPtr<Renderer> or PPtr<GameObject> target."""
+    info = graph.sf.by_path.get(path_id)
+    if info is None:
+        return []
+    if info.class_id in RENDERER_CLASSES:
+        renderers = [path_id]
+    elif info.class_id == hierarchy.CLASS_GAMEOBJECT:
+        renderers = [renderer for class_id in RENDERER_CLASSES
+                     for renderer in graph.components_by_class_id(path_id, class_id)]
+    else:
+        return []
+    found = []
+    for renderer in renderers:
+        found.extend(hierarchy.pptr_list(graph.value(renderer).get("m_Materials")))
+    return found
+
+
+def paintable_segments(graph, section):
+    """PathIDs of the segments the game recolours for one hull section.
+
+    The paintable-mesh field is a public array on the primary structures and the
+    single _hullSeg of a secondary structure; the primary structure concatenates
+    them.
+    """
+    value = graph.value(section.component)
+    segments = hierarchy.pptr_list(value.get("PaintableMeshes"))
+    if not segments:
+        segments = _pptr_or_list(value.get("_hullSeg"))
+    return segments
+
+
+def segment_materials(graph, segment):
+    """Material pathIDs one segment component puts under the faction livery."""
+    value = graph.value(segment)
+    found = []
+    for field in LIVERY_MATERIAL_FIELDS:
+        found.extend(_pptr_or_list(value.get(field)))
+    for target in hierarchy.pptr_list(value.get("_additionalMaterialTargets")):
+        found.extend(_renderer_materials(graph, target))
+    return [path_id for path_id in found
+            if path_id in graph.sf.by_path
+            and graph.sf.by_path[path_id].class_id == CLASS_MATERIAL]
+
+
+def livery_materials(graph, hulls):
+    """material pathID -> hull saveKeys whose livery the material carries.
+
+    The bake step assigns a clone of _originalMaterial (the _originalMaterials
+    array when a segment uses more than one) to the segment's own renderers and
+    to _additionalMaterialTargets, and the tint pass affects only that
+    clone.  Those materials are therefore the ones the game really recolours;
+    everything else keeps its authored colour.
+
+    Returns (materials, resolved segments, unresolved segment labels).
+    """
+    materials = {}
+    resolved = 0
+    unresolved = []
+    for save_key, hull in hulls.items():
+        for group in ("bows", "cores", "sterns", "superstructures"):
+            for section in getattr(hull, group):
+                for segment in paintable_segments(graph, section):
+                    found = segment_materials(graph, segment)
+                    if not found:
+                        unresolved.append("%s %s" % (save_key, section.id))
+                        continue
+                    resolved += 1
+                    for path_id in found:
+                        materials.setdefault(path_id, set()).add(save_key)
+    return materials, resolved, unresolved
 
 
 class Logger(object):
@@ -197,10 +286,12 @@ def _interleave(red, green, blue):
 class MaterialBuilder(object):
     """Decodes the textures a material needs and writes them as PNG.
 
-    A material is paintable when it belongs to a hull piece: in game the whole
-    surface takes the faction livery (_BasePaintTint / _StripePaintTint), whether
-    or not an albedo texture could be resolved.  Only clearly functional props
-    (emitters, glazing) keep a fixed colour.
+    materialRole is "livery" for the materials a segment hands to the tint
+    pass (_BasePaintTint / _StripePaintTint), even when no albedo texture
+    resolves, and "fixed" for everything else: the game leaves those at their
+    authored colour, so a copper doodad stays copper.  paintable mirrors the
+    livery role; it only falls back to the name rule (FUNCTIONAL_MATERIALS) when
+    the segment components could not be parsed at all.
 
     A texture slot resolves as: the addressable GUID the hull segment component
     stores -> the addressable "<Ship>_<Variant>_<Segment>" folder convention ->
@@ -210,7 +301,7 @@ class MaterialBuilder(object):
 
     def __init__(self, graph, out_dir, sizes, resource_stream, log,
                  catalog=None, pool=None, guid_tables=None, ship_roots=None,
-                 normals=True):
+                 normals=True, livery=None, livery_fallback=False):
         self.graph = graph
         self.out_dir = out_dir
         self.sizes = sizes
@@ -221,6 +312,9 @@ class MaterialBuilder(object):
         self.guid_tables = guid_tables or {}
         self.ship_roots = ship_roots or {}
         self.normals = normals
+        self.livery = livery or {}
+        self.livery_fallback = livery_fallback
+        self.fallback_count = 0
         self.cache = {}
         self.png_cache = {}
         self.definitions = []
@@ -232,6 +326,15 @@ class MaterialBuilder(object):
         self.shared_pngs = 0
         self.names = {}
         self.fixed_names = []
+
+    def material_role(self, path_id, name):
+        """livery when a hull segment recolours the material, else fixed."""
+        if path_id in self.livery:
+            return "livery"
+        if self.livery_fallback:
+            self.fallback_count += 1
+            return "fixed" if is_functional_material(name) else "livery"
+        return "fixed"
 
     def texture_by_name(self):
         """name -> Texture2D pathID, for the addressable paint masks."""
@@ -297,7 +400,8 @@ class MaterialBuilder(object):
         name = value.get("m_Name") or ""
         sources = self._resolve_slots(path_id, name, environments)
         has_albedo_map = sources["albedo"][0] is not None
-        paintable = not is_functional_material(name)
+        role = self.material_role(path_id, name)
+        paintable = role == "livery"
         if not paintable:
             self.fixed_names.append(name)
         index = len(self.definitions) + 1
@@ -311,10 +415,10 @@ class MaterialBuilder(object):
                           round(min(1.0, max(0.0, base[2])), 4)]
         definition = {
             "id": "t:%04d" % index,
-            # paintable is decided by ownership (see the class docstring): every
-            # material a hull piece references takes the faction livery unless it
-            # is a pure functional prop.
+            # livery = the game's tint pass really affects this
+            # material (see livery_materials); fixed = authored colour kept.
             "paintable": paintable,
+            "materialRole": role,
             "baseColor": base_color,
             "albedo": "",
             "albedoMode": "multiply",
@@ -808,11 +912,22 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
                 % (type(exc).__name__, exc))
             aa_catalog = None
             pool = None
+    livery, livery_segments, livery_unresolved = livery_materials(graph, hulls)
+    livery_fallback = not livery
+    log("livery: %d materials from %d hull segments%s"
+        % (len(livery), livery_segments,
+           "" if not livery_unresolved else
+           ", %d segments unresolved %s" % (len(livery_unresolved),
+                                             livery_unresolved[:4])))
+    if livery_fallback:
+        log("  WARNING no hull segment resolved a livery material: falling back "
+            "to the name based paintable rule")
     guid_tables, ship_roots = segment_textures(graph, aa_catalog, log)
     materials = MaterialBuilder(graph, out_dir, sizes, resource_stream, log,
                                 catalog=aa_catalog, pool=pool,
                                 guid_tables=guid_tables, ship_roots=ship_roots,
-                                normals=normals)
+                                normals=normals, livery=livery,
+                                livery_fallback=livery_fallback)
     pieces = collect_pieces(graph, hulls)
     log("hull types: %d, unique pieces: %d" % (len(hulls), len(pieces)))
     builder = PieceBuilder(graph, out_dir, materials, log)
@@ -843,9 +958,12 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
 
     paintable_ids = {m["id"] for m in materials.definitions if m["paintable"]}
     fixed_names = sorted(set(materials.fixed_names))
-    log("paintable materials: %d, fixed-colour props: %d %s"
+    log("materials: %d livery, %d fixed-colour %s"
         % (len(paintable_ids), len(materials.definitions) - len(paintable_ids),
            fixed_names))
+    if materials.fallback_count:
+        log("  livery fallback: %d materials classified by the name rule"
+            % materials.fallback_count)
     log("texture slots: %s" % ", ".join(
         "%s(%s)" % (slot, " ".join("%s=%d" % item for item in sorted(counts.items())))
         for slot, counts in materials.texture_sources.items()))
@@ -903,6 +1021,33 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
     log("hull surface check: %d unpainted %s"
         % (len(hull_surface_issues), hull_surface_issues[:4]))
 
+    # Per hull type: every material its candidate pieces reference, split by the
+    # role the game gives it.  The livery set has to stay a strict subset --
+    # doodads, cranes and functional props keep their authored colour.
+    by_material = {material["id"]: material for material in materials.definitions}
+
+    def _role_ids(ids, role):
+        return [material_id for material_id in ids
+                if by_material.get(material_id, {}).get("materialRole") == role]
+
+    hull_materials = {}
+    for save_key in HULLS:
+        referenced = []
+        for group in ("bows", "cores", "sterns", "superstructures"):
+            for section in getattr(hulls[save_key], group):
+                piece = by_id.get(section.id)
+                if piece is None:
+                    continue
+                for node in piece["nodes"]:
+                    material = node["material"]
+                    if material and material not in referenced:
+                        referenced.append(material)
+        hull_materials[save_key] = {
+            "referenced": referenced,
+            "livery": _role_ids(referenced, "livery"),
+            "fixed": _role_ids(referenced, "fixed"),
+        }
+
     catalog = {
         "formatVersion": 1,
         "source": {
@@ -932,6 +1077,15 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
         "indices": builder.index_total,
         "materials": len(materials.definitions),
         "paintable": len(paintable_ids),
+        "materialNames": dict(materials.names),
+        "hullMaterials": hull_materials,
+        "livery": {
+            "materials": len(livery),
+            "segments": livery_segments,
+            "unresolved": list(livery_unresolved),
+            "fallback": livery_fallback,
+            "fallbackMaterials": materials.fallback_count,
+        },
         "fixedMaterials": fixed_names,
         "hullSurfaceIssues": [list(item) for item in hull_surface_issues],
         "hullSurface": container_surface,

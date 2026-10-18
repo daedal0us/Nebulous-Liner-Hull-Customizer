@@ -9,6 +9,7 @@
 
 #include "Camera.h"
 #include "HullRenderer.h"
+#include "HullViewport.h"
 
 namespace nlhc {
 namespace {
@@ -68,7 +69,7 @@ QImage OffscreenRenderer::renderSplit(const HullPackage *package, const Assembly
 
         const int width = size.width();
         const int height = size.height();
-        const int topHeight = qBound(1, int(height * 0.45), height - 1);
+        const int topHeight = qBound(1, int(height * kSidePaneFraction), height - 1);
         const int bottomHeight = height - topHeight;
 
         SideCamera side;

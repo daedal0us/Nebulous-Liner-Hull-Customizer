@@ -1,6 +1,7 @@
 #include "HullEditorPanel.h"
 
 #include <QCollator>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
 #include <QSet>
@@ -122,19 +123,6 @@ HullEditorPanel::HullEditorPanel(QWidget *parent)
     auto *secondaryOuter = new QVBoxLayout(secondaryBox);
     m_secondaryLayout = new QVBoxLayout;
     secondaryOuter->addLayout(m_secondaryLayout);
-    m_addSecondary = new QPushButton(tr("Add superstructure"), secondaryBox);
-    connect(m_addSecondary, &QPushButton::clicked, this, [this] {
-        if (!m_hullType || m_hullType->superstructures.isEmpty())
-            return;
-        SecondaryConfig config;
-        config.key = m_hullType->superstructures.first();
-        config.segment = 1;
-        config.snap = 0;
-        m_config.secondary.append(config);
-        rebuildSecondary();
-        notifyChanged();
-    });
-    secondaryOuter->addWidget(m_addSecondary);
     root->addWidget(secondaryBox);
 }
 
@@ -159,7 +147,16 @@ void HullEditorPanel::setConfig(const RandomHullConfig &config)
 void HullEditorPanel::setEditable(bool editable)
 {
     m_editable = editable;
-    setEnabled(editable);
+    applyEnabledState();
+}
+
+void HullEditorPanel::applyEnabledState()
+{
+    setEnabled(m_editable);
+    for (int i = 0; i < 3; ++i) {
+        if (m_segmentBoxes[i])
+            m_segmentBoxes[i]->setEnabled(m_editable && m_segmentBoxes[i]->count() > 0);
+    }
 }
 
 const Piece *HullEditorPanel::pieceForSegment(int segment) const
@@ -278,94 +275,118 @@ void HullEditorPanel::normalizeAfterPieceChange()
 void HullEditorPanel::rebuildSecondary()
 {
     clearLayout(m_secondaryLayout);
-    if (!m_package || !m_hullType) {
-        m_addSecondary->setEnabled(false);
+    if (!m_package || !m_hullType)
         return;
-    }
-    m_addSecondary->setEnabled(m_editable);
 
-    for (int index = 0; index < m_config.secondary.size(); ++index) {
+    m_updating = true;
+    const QStringList candidates = sortedPieceIds(m_package, m_hullType->superstructures);
+
+    for (int segment = 0; segment < 3; ++segment) {
+        int entryIndex = -1;
+        for (int i = 0; i < m_config.secondary.size(); ++i) {
+            if (m_config.secondary.at(i).segment == segment) {
+                entryIndex = i;
+                break;
+            }
+        }
+        const bool enabled = entryIndex >= 0;
+        const Piece *segmentPiece = pieceForSegment(segment);
+        const int snapCount = segmentPiece ? segmentPiece->superstructureSnaps.size() : 0;
+        const bool usable = snapCount > 0 && !candidates.isEmpty();
+
         auto *row = new QWidget(m_dressingContainer);
         auto *rowLayout = new QHBoxLayout(row);
         rowLayout->setContentsMargins(0, 0, 0, 0);
 
+        auto *enableBox = new QCheckBox(segmentName(segment), row);
+        enableBox->setChecked(enabled);
+
         auto *pieceBox = new QComboBox(row);
         pieceBox->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
         pieceBox->setMinimumContentsLength(10);
-        for (const QString &id : sortedPieceIds(m_package, m_hullType->superstructures)) {
+        for (const QString &id : candidates) {
             const Piece *piece = m_package->piece(id);
             pieceBox->addItem(piece ? piece->debugName : id, piece ? piece->key : id);
         }
-        auto *segmentBox = new QComboBox(row);
-        for (int segment = 0; segment < 3; ++segment)
-            segmentBox->addItem(segmentName(segment), segment);
+
         auto *snapBox = new QComboBox(row);
-        auto *remove = new QPushButton(tr("Remove"), row);
+        for (int i = 0; i < snapCount; ++i)
+            snapBox->addItem(QStringLiteral("#%1").arg(i + 1), i);
 
-        const SecondaryConfig config = m_config.secondary.at(index);
-        int pieceIndex = pieceBox->findData(config.key);
-        if (pieceIndex < 0 && !config.key.isEmpty()) {
-            pieceBox->addItem(tr("unknown (%1)").arg(config.key), config.key);
-            pieceIndex = pieceBox->count() - 1;
+        if (enabled) {
+            const SecondaryConfig config = m_config.secondary.at(entryIndex);
+            int pieceIndex = pieceBox->findData(config.key);
+            if (pieceIndex < 0) {
+                pieceBox->addItem(tr("unavailable (%1)").arg(config.key.left(8)), config.key);
+                pieceIndex = pieceBox->count() - 1;
+            }
+            pieceBox->setCurrentIndex(pieceIndex);
+            int snapIndex = snapBox->findData(config.snap);
+            if (snapIndex < 0) {
+                snapBox->addItem(tr("unavailable (%1)").arg(config.snap), config.snap);
+                snapIndex = snapBox->count() - 1;
+            }
+            snapBox->setCurrentIndex(snapIndex);
         }
-        pieceBox->setCurrentIndex(qMax(0, pieceIndex));
-        segmentBox->setCurrentIndex(qBound(0, config.segment, 2));
 
-        auto fillSnaps = [this, snapBox](int segment, int selected) {
-            const_cast<HullEditorPanel *>(this)->m_updating = true;
-            snapBox->clear();
-            const Piece *piece = pieceForSegment(segment);
-            const int count = piece ? piece->superstructureSnaps.size() : 0;
-            for (int i = 0; i < count; ++i)
-                snapBox->addItem(QString::number(i), i);
-            const int found = snapBox->findData(selected);
-            if (found >= 0) {
-                snapBox->setCurrentIndex(found);
-            } else {
-                snapBox->addItem(tr("invalid (%1)").arg(selected), selected);
-                snapBox->setCurrentIndex(snapBox->count() - 1);
-            }
-            const_cast<HullEditorPanel *>(this)->m_updating = false;
-        };
-        fillSnaps(config.segment, config.snap);
+        enableBox->setEnabled(m_editable && usable);
+        pieceBox->setEnabled(m_editable && usable && enabled);
+        snapBox->setEnabled(m_editable && usable && enabled && snapCount > 1);
+        if (!usable)
+            enableBox->setToolTip(tr("This segment has no superstructure mount point."));
 
-        const int guardIndex = index;
-        connect(pieceBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, pieceBox, guardIndex](int) {
-            if (m_updating || guardIndex >= m_config.secondary.size())
+        connect(enableBox, &QCheckBox::toggled, this, [this, segment](bool on) {
+            if (m_updating)
                 return;
-            m_config.secondary[guardIndex].key = pieceBox->currentData().toString();
+            for (int i = m_config.secondary.size() - 1; i >= 0; --i) {
+                if (m_config.secondary.at(i).segment == segment)
+                    m_config.secondary.remove(i);
+            }
+            if (on && m_package && m_hullType) {
+                const QStringList ids = sortedPieceIds(m_package, m_hullType->superstructures);
+                if (!ids.isEmpty()) {
+                    const Piece *piece = m_package->piece(ids.first());
+                    SecondaryConfig config;
+                    config.key = piece ? piece->key : QString();
+                    config.segment = segment;
+                    config.snap = 0;
+                    m_config.secondary.append(config);
+                }
+            }
+            rebuildSecondary();
             notifyChanged();
         });
-        connect(segmentBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-                [this, segmentBox, snapBox, fillSnaps, guardIndex](int) {
-                    if (m_updating || guardIndex >= m_config.secondary.size())
+        connect(pieceBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+                [this, pieceBox, segment](int) {
+                    if (m_updating)
                         return;
-                    m_config.secondary[guardIndex].segment = segmentBox->currentData().toInt();
-                    fillSnaps(segmentBox->currentData().toInt(), 0);
-                    m_config.secondary[guardIndex].snap = snapBox->currentData().toInt();
-                    notifyChanged();
+                    for (int i = 0; i < m_config.secondary.size(); ++i) {
+                        if (m_config.secondary.at(i).segment != segment)
+                            continue;
+                        m_config.secondary[i].key = pieceBox->currentData().toString();
+                        notifyChanged();
+                        break;
+                    }
                 });
-        connect(snapBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, snapBox, guardIndex](int) {
-            if (m_updating || guardIndex >= m_config.secondary.size())
-                return;
-            m_config.secondary[guardIndex].snap = snapBox->currentData().toInt();
-            notifyChanged();
-        });
-        connect(remove, &QPushButton::clicked, this, [this, guardIndex] {
-            if (guardIndex < m_config.secondary.size()) {
-                m_config.secondary.remove(guardIndex);
-                rebuildSecondary();
-                notifyChanged();
-            }
-        });
+        connect(snapBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+                [this, snapBox, segment](int) {
+                    if (m_updating)
+                        return;
+                    for (int i = 0; i < m_config.secondary.size(); ++i) {
+                        if (m_config.secondary.at(i).segment != segment)
+                            continue;
+                        m_config.secondary[i].snap = snapBox->currentData().toInt();
+                        notifyChanged();
+                        break;
+                    }
+                });
 
-        rowLayout->addWidget(pieceBox, 2);
-        rowLayout->addWidget(segmentBox, 1);
-        rowLayout->addWidget(snapBox, 1);
-        rowLayout->addWidget(remove);
+        rowLayout->addWidget(enableBox);
+        rowLayout->addWidget(pieceBox, 1);
+        rowLayout->addWidget(snapBox);
         m_secondaryLayout->addWidget(row);
     }
-    setEnabled(m_editable);
+    m_updating = false;
 }
 
 void HullEditorPanel::syncFromConfig()
@@ -377,6 +398,11 @@ void HullEditorPanel::syncFromConfig()
             continue;
 
         // Keep only real candidates so a previous hull type cannot leave entries behind.
+        // Without a package there is nothing to compare against, so prune nothing.
+        if (!m_package || !m_hullType) {
+            box->setEnabled(m_editable && box->count() > 0);
+            continue;
+        }
         QStringList candidateKeys;
         candidateKeys.reserve(box->count());
         for (int index = 0; index < box->count(); ++index) {

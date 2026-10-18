@@ -8,4 +8,7 @@ namespace nlhc::demo {
 // the extracted asset package is available.
 AssemblyResult buildDemoAssembly();
 
+// A single fixed-colour prop: used to prove livery colours never touch unpainted materials.
+AssemblyResult buildFixedOnlyAssembly();
+
 } // namespace nlhc::demo

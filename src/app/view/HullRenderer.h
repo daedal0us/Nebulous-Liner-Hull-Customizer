@@ -46,6 +46,7 @@ private:
 
     GpuMesh *gpuMesh(const MeshData *mesh);
     GLuint texture(const HullPackage *package, const QString &relativePath);
+    float albedoMean(const HullPackage *package, const QString &relativePath);
     void drawItems(const AssemblyResult &assembly, const HullPackage *package, const RenderStyle &style,
                    const QMatrix4x4 &view, const QMatrix4x4 &projection, bool outlinePass);
 
@@ -53,6 +54,7 @@ private:
     QOpenGLShaderProgram *m_program = nullptr;
     QHash<const MeshData *, GpuMesh> m_meshes;
     QHash<QString, GLuint> m_textures;
+    QHash<QString, float> m_albedoMeans;
     QHash<QString, float> m_uniformCache;
 };
 

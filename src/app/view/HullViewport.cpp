@@ -62,7 +62,7 @@ void HullViewport::resetViews()
 
 int HullViewport::splitY() const
 {
-    return qBound(1, int(height() * 0.45), qMax(1, height() - 1));
+    return qBound(1, int(height() * kSidePaneFraction), qMax(1, height() - 1));
 }
 
 bool HullViewport::inTopPane(int y) const
@@ -88,7 +88,7 @@ void HullViewport::paintGL()
     const qreal dpr = devicePixelRatioF();
     const int pixelWidth = qMax(1, int(width() * dpr));
     const int pixelHeight = qMax(1, int(height() * dpr));
-    const int topHeight = qBound(1, int(pixelHeight * 0.45), pixelHeight - 1);
+    const int topHeight = qBound(1, int(pixelHeight * kSidePaneFraction), pixelHeight - 1);
     const int bottomHeight = pixelHeight - topHeight;
 
     // OpenGL's origin is bottom-left: the side view occupies the upper band.
@@ -136,20 +136,16 @@ void HullViewport::mouseMoveEvent(QMouseEvent *event)
     const QPoint delta = pos - m_lastPos;
     m_lastPos = pos;
 
-    const bool top = inTopPane(pos.y());
-    const float paneHeight = float(top ? splitY() : qMax(1, height() - splitY()));
+    if (inTopPane(pos.y()))
+        return; // the side view is a fixed reference strip
 
+    const float paneHeight = float(qMax(1, height() - splitY()));
     if (m_buttons & Qt::LeftButton) {
-        if (!top)
-            m_orbit.orbit(-float(delta.x()) * 0.4f, float(delta.y()) * 0.4f);
-        else
-            m_side.pan(float(delta.x()), float(delta.y()), paneHeight);
+        m_orbit.orbit(-float(delta.x()) * kOrbitDegreesPerPixel,
+                      float(delta.y()) * kOrbitDegreesPerPixel);
         update();
     } else if (m_buttons & (Qt::MiddleButton | Qt::RightButton)) {
-        if (!top)
-            m_orbit.pan(float(delta.x()), float(delta.y()), paneHeight);
-        else
-            m_side.pan(float(delta.x()), float(delta.y()), paneHeight);
+        m_orbit.pan(float(delta.x()), float(delta.y()), paneHeight);
         update();
     }
     QOpenGLWidget::mouseMoveEvent(event);
@@ -164,11 +160,8 @@ void HullViewport::mouseReleaseEvent(QMouseEvent *event)
 
 void HullViewport::mouseDoubleClickEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-        if (inTopPane(event->position().toPoint().y()))
-            m_side.reset();
-        else
-            m_orbit.reset();
+    if (event->button() == Qt::LeftButton && !inTopPane(event->position().toPoint().y())) {
+        m_orbit.reset();
         update();
     }
     QOpenGLWidget::mouseDoubleClickEvent(event);
@@ -179,11 +172,11 @@ void HullViewport::wheelEvent(QWheelEvent *event)
     const float steps = float(event->angleDelta().y()) / 120.0f;
     if (steps == 0.0f)
         return;
-    const float factor = qPow(0.88f, steps);
-    if (inTopPane(event->position().toPoint().y()))
-        m_side.zoom(factor);
-    else
-        m_orbit.zoom(factor);
+    if (inTopPane(event->position().toPoint().y())) {
+        event->ignore();
+        return; // fixed side view
+    }
+    m_orbit.zoom(qPow(0.88f, steps));
     update();
     event->accept();
 }

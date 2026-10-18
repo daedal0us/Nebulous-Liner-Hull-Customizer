@@ -48,6 +48,27 @@ MeshData makeBox(const QVector3D &center, const QVector3D &half, float uvScale =
 
 } // namespace
 
+AssemblyResult buildFixedOnlyAssembly()
+{
+    static QVector<MeshData> meshes;
+    static QVector<MaterialDef> materials;
+    if (meshes.isEmpty()) {
+        meshes.append(makeBox(QVector3D(0.0f, 0.0f, 0.0f), QVector3D(6.0f, 4.0f, 10.0f)));
+        MaterialDef copper;
+        copper.id = QStringLiteral("demo.fixed");
+        copper.paintable = false;
+        copper.baseColor = QColor(0x83, 0x73, 0x64);
+        materials.append(copper);
+    }
+
+    AssemblyResult result;
+    result.renderable = true;
+    QMatrix4x4 identity;
+    result.items.append({&meshes[0], &materials[0], identity});
+    result.bounds.expand(meshes[0].bounds);
+    return result;
+}
+
 AssemblyResult buildDemoAssembly()
 {
     static QVector<MeshData> meshes;

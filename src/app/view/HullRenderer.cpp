@@ -68,6 +68,11 @@ uniform bool uHasNormalMap;
 uniform sampler2D uNormalMap;
 uniform float uNormalStrength;
 
+uniform float uAlbedoMean;      // luminance average of the albedo, used to keep paint brightness
+uniform float uAlbedoDetail;    // how strongly the albedo modulates the paint (0..1)
+uniform float uDecalStrength;   // white markings baked into the albedo
+uniform float uExposure;
+
 uniform bool uOutlinePass;
 uniform vec3 uOutlineColor;
 uniform vec3 uCameraPosition;
@@ -122,26 +127,47 @@ void main()
     else if (uHasMask)
         trim = clamp(maskValue(), 0.0, 1.0);
 
-    vec3 painted = mix(uBaseColor.rgb, uTrimColor.rgb, trim);
-    vec3 color = uPainted ? painted : uMaterialColor.rgb;
+    vec3 albedoSample = vec3(1.0);
+    if (uHasAlbedo)
+        albedoSample = texture(uAlbedo, vUv).rgb;
 
-    if (uHasAlbedo) {
-        vec3 detail = texture(uAlbedo, vUv).rgb;
-        color *= mix(vec3(1.0), detail, clamp(uAlbedoMix, 0.0, 1.0));
+    vec3 color;
+    if (uPainted) {
+        // Livery surfaces: the paint colour decides the hue, the albedo only modulates it.
+        // Dividing by the texture mean keeps the paint at its authored brightness instead of
+        // darkening every surface by the average of the detail map.
+        vec3 painted = mix(uBaseColor.rgb, uTrimColor.rgb, trim);
+        vec3 detail = albedoSample / max(uAlbedoMean, 0.05);
+        color = painted * mix(vec3(1.0), detail, clamp(uAlbedoDetail, 0.0, 1.0));
+        // Decals (hull numbers, lettering) are near-white in the albedo and must stay white.
+        if (uHasAlbedo && uDecalStrength > 0.0) {
+            float luminance = dot(albedoSample, vec3(0.2990, 0.5870, 0.1140));
+            float decal = smoothstep(0.80, 0.96, luminance);
+            color = mix(color, vec3(0.93), decal * clamp(uDecalStrength, 0.0, 1.0));
+        }
+    } else {
+        // Fixed-colour props (copper doodads, grey deck plating, engine glow) keep their own
+        // material colour and are never repainted with the livery.
+        color = uMaterialColor.rgb * albedoSample;
     }
     if (uUseTint)
         color *= uTintColor.rgb;
+    color *= uExposure;
 
-    vec3 keyLight = normalize(vec3(0.35, 0.75, 0.55));
-    vec3 fillLight = normalize(vec3(-0.55, 0.15, -0.65));
+    // Fixed three point rig in world space: key from upper front left, fill from lower right,
+    // back light for separation; the directions never follow the camera.
+    vec3 keyLight = normalize(vec3(0.45, 0.72, 0.52));
+    vec3 fillLight = normalize(vec3(-0.62, 0.18, 0.35));
+    vec3 backLight = normalize(vec3(-0.25, 0.35, -0.90));
     float key = max(dot(normal, keyLight), 0.0);
     float fill = max(dot(normal, fillLight), 0.0);
-    float ambient = 0.42 + 0.18 * normal.y;
+    float back = max(dot(normal, backLight), 0.0);
+    float ambient = 0.44 + 0.10 * normal.y;
 
     vec3 viewDir = normalize(uCameraPosition - vWorld);
-    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0) * 0.18;
+    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0) * 0.12;
 
-    vec3 lit = color * (ambient + 0.72 * key + 0.28 * fill) + vec3(rim);
+    vec3 lit = color * (ambient + 0.62 * key + 0.22 * fill + 0.16 * back) + vec3(rim);
     fragColor = vec4(clamp(lit, 0.0, 1.0), 1.0);
 }
 )GLSL";
@@ -299,6 +325,37 @@ GLuint HullRenderer::texture(const HullPackage *package, const QString &relative
     return id;
 }
 
+float HullRenderer::albedoMean(const HullPackage *package, const QString &relativePath)
+{
+    if (!package || relativePath.isEmpty())
+        return 1.0f;
+    const auto cached = m_albedoMeans.constFind(relativePath);
+    if (cached != m_albedoMeans.cend())
+        return cached.value();
+
+    QString error;
+    const QImage image = package->texture(relativePath, &error);
+    float mean = 1.0f;
+    if (!image.isNull()) {
+        const QImage rgb = image.convertToFormat(QImage::Format_RGB32);
+        double total = 0.0;
+        qint64 samples = 0;
+        const int step = qMax(1, rgb.width() / 128);
+        for (int y = 0; y < rgb.height(); y += step) {
+            const QRgb *line = reinterpret_cast<const QRgb *>(rgb.constScanLine(y));
+            for (int x = 0; x < rgb.width(); x += step) {
+                const QRgb pixel = line[x];
+                total += 0.2990 * qRed(pixel) + 0.5870 * qGreen(pixel) + 0.1140 * qBlue(pixel);
+                ++samples;
+            }
+        }
+        if (samples > 0)
+            mean = qBound(0.05f, float(total / samples / 255.0), 1.0f);
+    }
+    m_albedoMeans.insert(relativePath, mean);
+    return mean;
+}
+
 void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *package,
                              const RenderStyle &style, const QMatrix4x4 &view,
                              const QMatrix4x4 &projection, bool outlinePass)
@@ -347,6 +404,10 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         }
         program.setUniformValue("uHasAlbedo", hasAlbedo);
         program.setUniformValue("uAlbedoMix", albedoMix);
+        program.setUniformValue("uAlbedoMean", albedoMean(package, albedoPath));
+        program.setUniformValue("uAlbedoDetail", style.albedoDetail);
+        program.setUniformValue("uDecalStrength", style.decalStrength);
+        program.setUniformValue("uExposure", style.exposure);
         if (hasAlbedo) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, albedoId);

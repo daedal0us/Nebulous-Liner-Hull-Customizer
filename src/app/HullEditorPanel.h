@@ -38,6 +38,7 @@ private:
     void syncFromConfig();
     void notifyChanged();
     void normalizeAfterPieceChange();
+    void applyEnabledState();
     const Piece *pieceForSegment(int segment) const;
 
     const HullPackage *m_package = nullptr;
@@ -51,7 +52,6 @@ private:
     QVBoxLayout *m_dressingLayout = nullptr;
     QWidget *m_dressingContainer = nullptr;
     QVBoxLayout *m_secondaryLayout = nullptr;
-    QPushButton *m_addSecondary = nullptr;
 };
 
 } // namespace nlhc
