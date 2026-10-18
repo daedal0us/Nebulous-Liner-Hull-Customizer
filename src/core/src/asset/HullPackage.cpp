@@ -202,7 +202,8 @@ struct HullPackage::Impl
     QHash<QString, int> materialIndex;
     QStringList warnings;
 
-    mutable QHash<QString, MeshData> meshCache;
+    // shared_ptr keeps the returned MeshData* stable across later insertions (QHash rehash).
+    mutable QHash<QString, std::shared_ptr<MeshData>> meshCache;
     mutable QHash<QString, QImage> textureCache;
     mutable QHash<QString, QString> meshErrors;
     mutable QHash<QString, QString> textureErrors;
@@ -474,7 +475,7 @@ const MeshData *HullPackage::mesh(const QString &id, QString *error) const
     }
     const auto cached = d->meshCache.constFind(id);
     if (cached != d->meshCache.cend())
-        return &cached.value();
+        return cached.value().get();
     const auto known = d->meshErrors.constFind(id);
     if (known != d->meshErrors.cend()) {
         if (error)
@@ -516,8 +517,10 @@ const MeshData *HullPackage::mesh(const QString &id, QString *error) const
             *error = failure;
         return nullptr;
     }
-    d->meshCache.insert(id, data);
-    return &d->meshCache[id];
+    auto stored = std::make_shared<MeshData>(std::move(data));
+    MeshData *raw = stored.get();
+    d->meshCache.insert(id, std::move(stored));
+    return raw;
 }
 
 QImage HullPackage::texture(const QString &relativePath, QString *error) const

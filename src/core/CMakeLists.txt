@@ -8,6 +8,7 @@ qt_add_library(NLHCCore SHARED
     include/nlhc/fleet/FleetDocument.h
     include/nlhc/fleet/HullConfig.h
     include/nlhc/fleet/ShipRecord.h
+    include/nlhc/hull/DressingLayout.h
     include/nlhc/hull/HullAssembler.h
     include/nlhc/hull/Validate.h
     src/Version.cpp
@@ -15,6 +16,7 @@ qt_add_library(NLHCCore SHARED
     src/MeshData.cpp
     src/asset/HullPackage.cpp
     src/fleet/FleetDocument.cpp
+    src/hull/DressingLayout.cpp
     src/hull/HullAssembler.cpp
     src/hull/Validate.cpp
 )

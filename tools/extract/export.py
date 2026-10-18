@@ -194,7 +194,9 @@ class MaterialBuilder(object):
             return
         grey = textures.is_grayscale(red, green, blue)
         definition["albedoMode"] = "multiply" if grey else "overlay"
-        definition["albedoMix"] = 0.35 if grey else 0.0
+        # multiply: albedo multiplies the paint (0.0, matches the doc example);
+        # overlay: albedo adds detail over the paint, needs a blend weight.
+        definition["albedoMix"] = 0.0 if grey else 0.35
         if grey:
             values, out_width, out_height = textures.downsample(red, width, height,
                                                                self.tex_size)

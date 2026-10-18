@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QColor>
 #include <QQuaternion>
 #include <QString>
 #include <QStringList>

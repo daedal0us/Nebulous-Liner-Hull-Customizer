@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "PieceLookup.h"
+#include "nlhc/hull/DressingLayout.h"
 
 namespace nlhc {
 namespace {
@@ -54,7 +55,9 @@ Diagnostic makeDiagnostic(Severity severity, const char *code, const QString &de
 }
 
 // Mirrors how the game loads a saved configuration and picks dressing variants.
-QVector<bool> visibleNodes(const Piece &piece, const QVector<int> &dressing, int segment,
+// `values` holds the value that actually takes effect for each dressing point of `piece`;
+// a missing entry means the game never calls Select() for that point.
+QVector<bool> visibleNodes(const Piece &piece, const QVector<std::optional<int>> &values, int segment,
                            QVector<Diagnostic> *diagnostics)
 {
     const int nodeCount = piece.nodes.size();
@@ -89,16 +92,13 @@ QVector<bool> visibleNodes(const Piece &piece, const QVector<int> &dressing, int
         int selected = -1; // nothing selected -> the point stays empty
         bool hideAll = true;
 
-        if (point >= dressing.size()) {
+        if (point >= values.size() || !values.at(point).has_value()) {
             hideAll = false; // the game never calls Select(): every variant stays visible
             diagnostics->append(makeDiagnostic(
                 Severity::Warning, diag::DressingLengthMismatch,
-                QStringLiteral("%1 of %2 dressing points configured")
-                    .arg(dressing.size())
-                    .arg(piece.dressingPoints.size()),
-                segment, point));
+                QStringLiteral("dressing point %1 is not configured").arg(point + 1), segment, point));
         } else {
-            const int choice = dressing.at(point);
+            const int choice = *values.at(point);
             if (choice >= 0 && choice < variantCount) {
                 selected = choice;
                 hideAll = true;
@@ -122,6 +122,27 @@ QVector<bool> visibleNodes(const Piece &piece, const QVector<int> &dressing, int
     }
 
     return visible;
+}
+
+QVector<Diagnostic> dressingDiagnostics(const QVector<DressingBinding> &bindings)
+{
+    QVector<Diagnostic> diagnostics;
+    for (const DressingBinding &binding : bindings) {
+        if (!binding.point)
+            continue;
+        const int variants = binding.point->variants.size();
+        const int highest = binding.point->allowEmpty ? variants : variants - 1;
+        if (!binding.known) {
+            continue; // reported by Validate with more context
+        }
+        if (binding.value < 0 || binding.value > highest) {
+            diagnostics.append(makeDiagnostic(
+                Severity::Warning, diag::DressingOutOfRange,
+                QStringLiteral("choice %1 of %2 variants").arg(binding.value).arg(highest + 1),
+                binding.ownerSegment, binding.pointIndex));
+        }
+    }
+    return diagnostics;
 }
 
 struct PendingItem
@@ -157,6 +178,10 @@ AssemblyResult HullAssembler::assemble(const HullPackage &package, const QString
     if (!segments[0] && !segments[1] && !segments[2])
         return result;
 
+    const QVector<DressingBinding> bindings =
+        bindDressing(segments[0], segments[1], segments[2], config);
+    result.diagnostics += dressingDiagnostics(bindings);
+
     // Pure translation layout: bow.aftSnap meets core.foreSnap, stern.foreSnap meets core.aftSnap.
     QVector3D offsets[RandomHullConfig::SegmentCount];
     if (segments[RandomHullConfig::Core]) {
@@ -173,8 +198,14 @@ AssemblyResult HullAssembler::assemble(const HullPackage &package, const QString
         const Piece *piece = segments[segment];
         if (!piece)
             continue;
-        const QVector<bool> visible = visibleNodes(*piece, config.primary[size_t(segment)].dressing, segment,
-                                                   &result.diagnostics);
+        QVector<std::optional<int>> values;
+        values.reserve(piece->dressingPoints.size());
+        for (const DressingBinding &binding : std::as_const(bindings)) {
+            if (binding.ownerSegment != segment)
+                continue;
+            values.append(binding.known ? std::optional<int>(binding.value) : std::nullopt);
+        }
+        const QVector<bool> visible = visibleNodes(*piece, values, segment, &result.diagnostics);
         for (int index = 0; index < piece->nodes.size(); ++index) {
             if (!visible.value(index))
                 continue;

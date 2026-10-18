@@ -8,6 +8,7 @@
 
 #include "nlhc/asset/HullPackage.h"
 #include "nlhc/fleet/FleetDocument.h"
+#include "nlhc/hull/HullAssembler.h"
 #include "nlhc/hull/Validate.h"
 
 namespace {
@@ -98,6 +99,44 @@ private slots:
                          qPrintable(QStringLiteral("%1: %2 (%3)")
                                         .arg(ship.name, problem.code, problem.detail)));
             }
+        }
+    }
+
+    void assemblyHasGeometry_data()
+    {
+        QTest::addColumn<QString>("file");
+        QTest::newRow("bulk") << QStringLiteral("bulk-liner-sample.fleet");
+        QTest::newRow("container") << QStringLiteral("container-liner-sample.fleet");
+    }
+
+    void assemblyHasGeometry()
+    {
+        QFETCH(QString, file);
+
+        nlhc::HullPackage package;
+        QString error;
+        if (!package.load(assetRoot(), &error) || package.hullTypes().isEmpty())
+            QSKIP("asset package not generated yet");
+
+        nlhc::FleetDocument document;
+        QVector<nlhc::Diagnostic> diagnostics;
+        QVERIFY(document.load(samplePath(file), &diagnostics, &error));
+        document.setPackage(&package);
+
+        nlhc::HullAssembler assembler;
+        for (int row = 0; row < document.shipCount(); ++row) {
+            const nlhc::ShipRecord ship = document.ship(row);
+            const auto config = document.hullConfig(row);
+            QVERIFY(config.has_value());
+            const nlhc::AssemblyResult result = assembler.assemble(package, ship.hullType, *config);
+            QVERIFY2(result.renderable, qPrintable(ship.name));
+            QVERIFY2(!result.items.isEmpty(), qPrintable(QStringLiteral("%1 has no draw items").arg(ship.name)));
+            QVERIFY2(result.bounds.valid, qPrintable(QStringLiteral("%1 has an invalid bounds").arg(ship.name)));
+            const QVector3D size = result.bounds.size();
+            QVERIFY2(size.z() > 10.0f && size.z() < 2000.0f,
+                     qPrintable(QStringLiteral("%1 length %2").arg(ship.name).arg(size.z())));
+            for (const nlhc::DrawItem &item : result.items)
+                QVERIFY2(item.mesh && !item.mesh->indices.isEmpty(), qPrintable(ship.name));
         }
     }
 
