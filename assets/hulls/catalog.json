@@ -24077,7 +24077,6 @@
    "metallic": 1.0,
    "smoothness": 0.4551,
    "maskMode": "trim",
-   "bareMask": "bare/0001.png",
    "normal": "normal/0001.png",
    "normalStrength": 1.0
   },
@@ -24166,7 +24165,6 @@
    "metallic": 1.0,
    "smoothness": 0.4646,
    "maskMode": "trim",
-   "bareMask": "bare/0005.png",
    "normal": "normal/0005.png",
    "normalStrength": 1.0
   },
@@ -24189,7 +24187,6 @@
    "metallic": 1.0,
    "smoothness": 0.4606,
    "maskMode": "trim",
-   "bareMask": "bare/0006.png",
    "normal": "normal/0006.png",
    "normalStrength": 1.0
   },
@@ -24212,7 +24209,6 @@
    "metallic": 0.9999,
    "smoothness": 0.467,
    "maskMode": "trim",
-   "bareMask": "bare/0007.png",
    "normal": "normal/0007.png",
    "normalStrength": 1.0
   },
@@ -24235,7 +24231,6 @@
    "metallic": 0.9999,
    "smoothness": 0.4801,
    "maskMode": "trim",
-   "bareMask": "bare/0008.png",
    "normal": "normal/0008.png",
    "normalStrength": 1.0
   },
@@ -24258,7 +24253,6 @@
    "metallic": 1.0,
    "smoothness": 0.4576,
    "maskMode": "trim",
-   "bareMask": "bare/0009.png",
    "normal": "normal/0009.png",
    "normalStrength": 1.0
   },
@@ -24281,7 +24275,6 @@
    "metallic": 0.9996,
    "smoothness": 0.4813,
    "maskMode": "trim",
-   "bareMask": "bare/0010.png",
    "normal": "normal/0010.png",
    "normalStrength": 1.0
   },
@@ -24304,7 +24297,6 @@
    "metallic": 0.9996,
    "smoothness": 0.4813,
    "maskMode": "trim",
-   "bareMask": "bare/0010.png",
    "normal": "normal/0010.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24329,7 +24321,6 @@
    "metallic": 0.9998,
    "smoothness": 0.4654,
    "maskMode": "trim",
-   "bareMask": "bare/0012.png",
    "normal": "normal/0012.png",
    "normalStrength": 1.0
   },
@@ -24352,7 +24343,6 @@
    "metallic": 0.9998,
    "smoothness": 0.4654,
    "maskMode": "trim",
-   "bareMask": "bare/0012.png",
    "normal": "normal/0012.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24377,7 +24367,6 @@
    "metallic": 0.9999,
    "smoothness": 0.4819,
    "maskMode": "trim",
-   "bareMask": "bare/0014.png",
    "normal": "normal/0014.png",
    "normalStrength": 1.0
   },
@@ -24400,7 +24389,6 @@
    "metallic": 0.9999,
    "smoothness": 0.4819,
    "maskMode": "trim",
-   "bareMask": "bare/0014.png",
    "normal": "normal/0014.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",

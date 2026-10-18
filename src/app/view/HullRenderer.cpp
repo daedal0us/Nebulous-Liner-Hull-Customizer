@@ -176,9 +176,6 @@ void main()
         // The hull atlas carries near-white panels (vent grilles, radiator stripes) that the game
         // leaves unpainted. Their albedo is the colour, so blend it back over the paint.
         float albedoLuma24 = dot(albedoSample, vec3(0.2990, 0.5870, 0.1140));
-        // The atlas also carries dark structural bands that the game leaves in the base colour:
-        // pull them out of the trim so the orange stops flooding the hull.
-        painted = mix(painted, uBaseColor.rgb, smoothstep(0.42, 0.16, albedoLuma24));
         // Louvred vents stay bare metal in the game: the paint stops at the frame. Neither the
         // mask nor the brightness can find them, so the exporter bakes their coverage.
         float bare = (uMaskKeep > 0.5 || !uHasBare)
@@ -189,7 +186,8 @@ void main()
             vec3 authored = uMaterialColor.rgb * albedoSample;
             painted = mix(authored, uBaseColor.rgb, trim);
         }
-        vec3 detail = albedoSample / max(uAlbedoMean, 0.05);
+        // The atlas seams are dark; left unbounded the detail map turns the trim bands brown.
+        vec3 detail = clamp(albedoSample / max(uAlbedoMean, 0.05), vec3(0.72), vec3(1.30));
         color = painted * mix(vec3(1.0), detail, clamp(uAlbedoDetail, 0.0, 1.0));
         // Bare panels are metals lit by an environment this viewer has no probe for, so the
         // albedo is lifted toward the plate colour the game shows.

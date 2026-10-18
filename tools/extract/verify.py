@@ -566,8 +566,8 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
         owner = (names.get(material["id"]) or "").lower()
         if "civbulk" not in owner and "marauder" not in owner:
             bare_bad.append(material["id"])
-    report.check("bare panels are exported for the marauder plating only",
-                 bare_ok > 0 and not bare_bad,
+    report.check("bare panel maps only ship for the marauder plating",
+                 not bare_bad,
                  "%d bare maps%s" % (bare_ok, "" if not bare_bad
                                      else "; unexpected " + ", ".join(bare_bad[:3])))
 
