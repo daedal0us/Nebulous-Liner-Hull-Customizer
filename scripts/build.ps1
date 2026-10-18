@@ -4,6 +4,7 @@ param(
     [string]$Preset = 'mingw-release',
     [switch]$SkipTests,
     [switch]$Deploy,
+    [switch]$Sign,
     [string]$Prefix = 'dist'
 )
 
@@ -37,6 +38,12 @@ if ($Deploy) {
     Write-Host "== install ($distDir)" -ForegroundColor Cyan
     & $cmake --install $buildDir --prefix $distDir
     if ($LASTEXITCODE -ne 0) { throw 'install failed' }
+}
+
+if ($Sign) {
+    Write-Host '== sign release binaries' -ForegroundColor Cyan
+    & (Join-Path $PSScriptRoot 'sign.ps1') -DistDir $Prefix
+    if ($LASTEXITCODE -ne 0) { throw 'signing failed' }
 }
 
 Write-Host '== done' -ForegroundColor Green

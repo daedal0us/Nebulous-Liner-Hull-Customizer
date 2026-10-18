@@ -146,8 +146,13 @@ void HullEditorPanel::setConfig(const RandomHullConfig &config)
 
 void HullEditorPanel::setEditable(bool editable)
 {
+    if (m_editable == editable)
+        return;
     m_editable = editable;
     applyEnabledState();
+    // The per-segment rows bake m_editable into each control; rebuild them so a ship that is
+    // editable after a read-only one gets live rows again.
+    rebuildSecondary();
 }
 
 void HullEditorPanel::applyEnabledState()

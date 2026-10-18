@@ -139,20 +139,21 @@ void main()
         vec3 painted = mix(uBaseColor.rgb, uTrimColor.rgb, trim);
         vec3 detail = albedoSample / max(uAlbedoMean, 0.05);
         color = painted * mix(vec3(1.0), detail, clamp(uAlbedoDetail, 0.0, 1.0));
-        // Decals (hull numbers, lettering) are near-white in the albedo and must stay white.
-        if (uHasAlbedo && uDecalStrength > 0.0) {
-            float luminance = dot(albedoSample, vec3(0.2990, 0.5870, 0.1140));
-            float decal = smoothstep(0.80, 0.96, luminance);
-            color = mix(color, vec3(0.93), decal * clamp(uDecalStrength, 0.0, 1.0));
-        }
+        if (uUseTint)
+            color *= uTintColor.rgb;
+        color *= uExposure;
     } else {
         // Fixed-colour props (copper doodads, grey deck plating, engine glow) keep their own
-        // material colour and are never repainted with the livery.
+        // material colour: no livery tint and no exposure lift, or the copper turns pale.
         color = uMaterialColor.rgb * albedoSample;
     }
-    if (uUseTint)
-        color *= uTintColor.rgb;
-    color *= uExposure;
+    // Decals (hull numbers, lettering) are near-white in the albedo and stay white on both
+    // painted and fixed surfaces; the threshold is low because only 1-4% of the maps are white.
+    if (uHasAlbedo && uDecalStrength > 0.0) {
+        float luminance = dot(albedoSample, vec3(0.2990, 0.5870, 0.1140));
+        float decal = smoothstep(0.72, 0.92, luminance);
+        color = mix(color, vec3(0.93), decal * clamp(uDecalStrength, 0.0, 1.0));
+    }
 
     // Fixed three point rig in world space: key from upper front left, fill from lower right,
     // back light for separation; the directions never follow the camera.

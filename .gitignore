@@ -2,6 +2,8 @@
 /build
 /dist
 /.cache
+/scripts/signing-cert.cer
+*.pfx
 *.user
 *.autosave
 __pycache__/
