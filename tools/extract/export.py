@@ -812,6 +812,12 @@ class MaterialBuilder(object):
             return "trim"
         if (low_sat / low) > (high_sat / high) + 0.08:
             return "keep"
+        # The Moorline sheets are authored the other way round: on them the dark side is the
+        # deck plating, which the game leaves at its authored grey, and it covers the majority
+        # of the sheet (49.7-60.7% against 23.7-38.8% on the marauder skins, measured over all
+        # 33 masks). A minority dark side is a trim band, a majority dark side is plating.
+        if low / float(low + high) >= 0.45:
+            return "keep"
         # The doodads atlas carries painted-in metal on the unpainted side; the scatter test above
         # is noisy on it, so the family name decides.
         try:
