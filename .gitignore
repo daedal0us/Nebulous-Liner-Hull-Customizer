@@ -1,0 +1,6 @@
+/参考
+/build
+/dist
+/.cache
+*.user
+*.autosave

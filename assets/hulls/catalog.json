@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "source": {
+    "bundle": "stock-f2",
+    "sha256": "",
+    "unity": "2020.3.49f1",
+    "extractor": "0.0.0"
+  },
+  "hullTypes": [],
+  "pieces": [],
+  "materials": []
+}

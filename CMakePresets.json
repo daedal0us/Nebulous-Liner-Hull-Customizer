@@ -1,0 +1,33 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "mingw-release",
+      "displayName": "MinGW Qt 6.8.0 Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/mingw-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.8.0/mingw_64",
+        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe",
+        "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
+        "CMAKE_RC_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/windres.exe"
+      }
+    },
+    {
+      "name": "mingw-debug",
+      "displayName": "MinGW Qt 6.8.0 Debug",
+      "inherits": "mingw-release",
+      "binaryDir": "${sourceDir}/build/mingw-debug",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "mingw-release", "configurePreset": "mingw-release" },
+    { "name": "mingw-debug", "configurePreset": "mingw-debug" }
+  ],
+  "testPresets": [
+    { "name": "mingw-release", "configurePreset": "mingw-release", "output": { "outputOnFailure": true } },
+    { "name": "mingw-debug", "configurePreset": "mingw-debug", "output": { "outputOnFailure": true } }
+  ]
+}

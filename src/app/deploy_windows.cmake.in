@@ -1,0 +1,8 @@
+execute_process(
+    COMMAND "@NLHC_WINDEPLOYQT@"
+            --dir "${CMAKE_INSTALL_PREFIX}/bin"
+            "${CMAKE_INSTALL_PREFIX}/bin/NLHC.exe"
+    RESULT_VARIABLE _nlhc_deploy_result)
+if(NOT _nlhc_deploy_result EQUAL 0)
+    message(FATAL_ERROR "windeployqt failed: ${_nlhc_deploy_result}")
+endif()
