@@ -310,8 +310,16 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         const QString albedoPath = material ? material->albedoPath : QString();
         const GLuint albedoId = texture(package, albedoPath);
         const bool hasAlbedo = albedoId != 0 && gpu->hasUv;
+        // A "multiply" albedo is a greyscale detail map and should always modulate the paint
+        // colour at full strength; "overlay" uses the authored mix factor.
+        float albedoMix = 0.0f;
+        if (material) {
+            albedoMix = material->albedoMode == QLatin1String("multiply")
+                ? 1.0f
+                : material->albedoMix;
+        }
         program.setUniformValue("uHasAlbedo", hasAlbedo);
-        program.setUniformValue("uAlbedoMix", material ? material->albedoMix : 0.0f);
+        program.setUniformValue("uAlbedoMix", albedoMix);
         if (hasAlbedo) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, albedoId);

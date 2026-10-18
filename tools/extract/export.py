@@ -71,6 +71,43 @@ class MaterialBuilder(object):
         self.definitions = []
         self.by_path = {}
         self.failures = []
+        self._by_name = None
+        self.mask_sources = {}
+
+    def texture_by_name(self):
+        """name -> Texture2D pathID, for the addressable paint masks."""
+        if self._by_name is None:
+            names = {}
+            for info in self.graph.sf.objects_of(28):
+                name = self.graph.value(info.path_id).get("m_Name") or ""
+                if name and name not in names:
+                    names[name] = info.path_id
+            self._by_name = names
+        return self._by_name
+
+    def resolve_mask(self, environments):
+        """Find the stripe mask for a material.
+
+        Hull segment materials leave their own _PaintMask slot empty: the mask is
+        swapped in at runtime by HullSegmentMultiMaterial from an addressable
+        texture table that stores only a GUID.  Those textures do live in the
+        bundle, so the mask is located through the naming convention
+        (<_BaseColorMap without _base_color>) + _paint_mask.
+        """
+        direct = environments.get("_PaintMask")
+        if direct:
+            return direct, "property"
+        base = environments.get("_BaseColorMap")
+        if not base:
+            return None, "no-base-color-map"
+        base_name = self.graph.value(base).get("m_Name") or ""
+        for suffix in ("_base_color", "_basecolor", "_albedo", "_basecolour"):
+            if base_name.endswith(suffix):
+                candidate = base_name[:-len(suffix)] + "_paint_mask"
+                path_id = self.texture_by_name().get(candidate)
+                if path_id:
+                    return path_id, "name"
+        return None, "none"
 
     def material_id(self, path_id):
         material = self.by_path.get(path_id)
@@ -128,9 +165,9 @@ class MaterialBuilder(object):
         self.by_path[path_id] = definition
         self.definitions.append(definition)
 
-        mask_path = environments.get("_PaintMask")
+        mask_path, mask_source = self.resolve_mask(environments)
         if mask_path:
-            self._build_mask(definition, mask_path)
+            self._build_mask(definition, mask_path, mask_source)
         elif definition["paintable"]:
             # No authored stripe mask: an all black mask keeps the renderer on
             # the base paint everywhere instead of falling back to the trim tint.
@@ -138,6 +175,7 @@ class MaterialBuilder(object):
             textures.write_png(os.path.join(self.out_dir, relative), 4, 4, 1,
                                bytearray(16))
             definition["mask"] = relative
+            self.mask_sources[definition["id"]] = "placeholder"
 
         albedo_path = environments.get("_BaseColorMap") or environments.get("_MainTex")
         if albedo_path:
@@ -163,22 +201,30 @@ class MaterialBuilder(object):
             self.failures.append((path_id, str(exc)))
             raise
 
-    def _build_mask(self, definition, path_id):
+    def _build_mask(self, definition, path_id, source):
         try:
             info, level, (width, height, red, green, blue, alpha) = self._texture(path_id)
         except Exception as exc:
-            self.log("    mask %s undecodable (%s) -> per vertex trim fallback"
-                     % (definition["id"], exc))
+            self.log("    mask %s undecodable (%s)" % (definition["id"], exc))
             definition["trimBaked"] = True
+            self.mask_sources[definition["id"]] = "failed"
             return
         stats = textures.channel_stats(red, green, blue, alpha)
         channel = textures.choose_mask_channel(stats)
         values = {"r": red, "g": green, "b": blue, "a": alpha}[channel]
-        mean = stats[channel][0] if channel in stats else 0.0
         definition["maskChannel"] = channel
-        definition["maskInvert"] = mean > 0.5
-        if definition["maskInvert"]:
-            values = bytearray(255 - value for value in values)
+        # The authored _PaintMask is WHITE where the base paint applies and BLACK
+        # on the stripe/trim regions (flat plating versus seams, hatch rims,
+        # grilles and vents). The in-game nameplate baker renders plates black
+        # into this texture, i.e. it gives the plate the contrasting stripe tint
+        # so the albedo lettering stays readable.  Renderers must therefore use
+        # (1 - mask) as the trim weight; maskInvert says exactly that.
+        definition["maskInvert"] = True
+        self.mask_sources[definition["id"]] = "%s:%s:%s" % (
+            source, channel, info.name)
+        coverage = sum(1 for value in values if value >= 128) / float(len(values))
+        self.log("    mask %s <- %-34s channel %s, stripe %.0f%% (%s)"
+                 % (definition["id"], info.name, channel, coverage * 100.0, source))
         values, out_width, out_height = textures.downsample(values, width, height,
                                                            self.tex_size)
         relative = "mask/%s.png" % definition["id"].split(":")[1]
@@ -194,9 +240,10 @@ class MaterialBuilder(object):
             return
         grey = textures.is_grayscale(red, green, blue)
         definition["albedoMode"] = "multiply" if grey else "overlay"
-        # multiply: albedo multiplies the paint (0.0, matches the doc example);
-        # overlay: albedo adds detail over the paint, needs a blend weight.
-        definition["albedoMix"] = 0.0 if grey else 0.35
+        # multiply: rgb = paint * lerp(1, albedo, mix) -- 1.0 keeps the full
+        # albedo detail, 0.0 would drop it entirely.
+        # overlay: the albedo is added over the paint with a lighter weight.
+        definition["albedoMix"] = 1.0 if grey else 0.35
         if grey:
             values, out_width, out_height = textures.downsample(red, width, height,
                                                                self.tex_size)
@@ -509,6 +556,7 @@ def extract(bundle_path, out_dir, tex_size=512, log=None, max_bytes=None):
         "vertices": builder.vertex_total,
         "indices": builder.index_total,
         "materials": len(materials.definitions),
+        "maskSources": dict(materials.mask_sources),
         "textureFailures": materials.failures,
         "budgetBytes": max_bytes,
     }

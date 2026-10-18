@@ -7,6 +7,7 @@
 #include <QMenu>
 #include <QComboBox>
 #include <QDockWidget>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
@@ -530,6 +531,42 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     applySplitterRatio();
 }
 
+QString MainWindow::debugAssemblySummary() const
+{
+    return m_lastAssemblySummary;
+}
+
+QString MainWindow::summarizeAssembly(const AssemblyResult &assembly) const
+{
+    int painted = 0;
+    int unpainted = 0;
+    int withAlbedo = 0;
+    int withMask = 0;
+    int nullMaterial = 0;
+    for (const DrawItem &item : assembly.items) {
+        if (!item.material) {
+            ++nullMaterial;
+            continue;
+        }
+        item.material->paintable ? ++painted : ++unpainted;
+        if (!item.material->albedoPath.isEmpty())
+            ++withAlbedo;
+        if (!item.material->maskPath.isEmpty())
+            ++withMask;
+    }
+    const QVector3D size = assembly.bounds.size();
+    return QStringLiteral("items=%1 painted=%2 unpainted=%3 albedo=%4 mask=%5 nullMat=%6 size=%7x%8x%9")
+        .arg(assembly.items.size())
+        .arg(painted)
+        .arg(unpainted)
+        .arg(withAlbedo)
+        .arg(withMask)
+        .arg(nullMaterial)
+        .arg(size.z(), 0, 'f', 1)
+        .arg(size.y(), 0, 'f', 1)
+        .arg(size.x(), 0, 'f', 1);
+}
+
 QString MainWindow::debugLayoutSummary() const
 {
     QString summary = QStringLiteral("window=%1x%2").arg(width()).arg(height());
@@ -594,7 +631,9 @@ void MainWindow::refreshAssembly()
     }
     HullAssembler assembler;
     m_viewport->setPackage(&m_package);
-    m_viewport->setAssembly(assembler.assemble(m_package, ship.hullType, *config));
+    m_lastAssembly = assembler.assemble(m_package, ship.hullType, *config);
+    m_lastAssemblySummary = summarizeAssembly(m_lastAssembly);
+    m_viewport->setAssembly(m_lastAssembly);
 }
 
 void MainWindow::refreshDiagnostics()

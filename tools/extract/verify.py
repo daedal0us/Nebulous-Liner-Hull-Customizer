@@ -266,6 +266,29 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
     rate = (texture_ok / texture_total) if texture_total else 1.0
     report.check("texture decode rate >= 95%", rate >= 0.95,
                  "%d/%d (%.1f%%)" % (texture_ok, texture_total, rate * 100.0))
+
+    # A real (authored) stripe mask is far bigger than the 4x4 placeholder.
+    real_masks = []
+    placeholder_masks = []
+    polarity_bad = []
+    for material in materials:
+        relative = material["mask"]
+        if not relative:
+            continue
+        size = os.path.getsize(os.path.join(out_dir, relative))
+        if size > 200:
+            real_masks.append(material)
+            if material["maskChannel"] != "r" or not material["maskInvert"]:
+                polarity_bad.append(material["id"])
+        else:
+            placeholder_masks.append(material)
+            if material["maskInvert"]:
+                polarity_bad.append(material["id"] + " placeholder inverted")
+    report.check("hull materials carry authored stripe masks",
+                 len(real_masks) >= 6 and not polarity_bad,
+                 "%d authored + %d placeholder, channel/polarity %s"
+                 % (len(real_masks), len(placeholder_masks),
+                    "ok" if not polarity_bad else "; ".join(polarity_bad[:3])))
     missing_files = []
     for material in materials:
         for field in ("mask", "albedo"):

@@ -67,9 +67,10 @@ int main(int argc, char *argv[])
             const bool saved = window.grab().save(screenshot);
             QFile log(screenshot + QStringLiteral(".log"));
             if (log.open(QIODevice::WriteOnly | QIODevice::Truncate))
-                log.write(QStringLiteral("%1 %2\n")
+                log.write(QStringLiteral("%1 %2\n%3\n")
                               .arg(saved ? QStringLiteral("ok") : QStringLiteral("grab failed"),
-                                   window.debugLayoutSummary())
+                                   window.debugLayoutSummary(),
+                                   window.debugAssemblySummary())
                               .toUtf8());
             QCoreApplication::quit();
         });

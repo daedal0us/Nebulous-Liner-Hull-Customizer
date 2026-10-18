@@ -6,6 +6,7 @@
 #include "I18n.h"
 #include "nlhc/asset/HullPackage.h"
 #include "nlhc/fleet/FleetDocument.h"
+#include "nlhc/hull/HullAssembler.h"
 
 class QAction;
 class QDockWidget;
@@ -33,6 +34,8 @@ public:
     bool openFleet(const QString &path);
     void selectShipByIndex(int row);
     QString debugLayoutSummary() const;
+    QString debugAssemblySummary() const;
+    QString summarizeAssembly(const nlhc::AssemblyResult &assembly) const;
 
 private:
     void applySplitterRatio();
@@ -107,6 +110,8 @@ private:
 
     QStringList m_recentFiles;
     int m_currentRow = -1;
+    AssemblyResult m_lastAssembly;
+    QString m_lastAssemblySummary;
     bool m_handlingLanguageChange = false;
     bool m_splitterSized = false;
     bool m_userAdjustedSplitter = false;
