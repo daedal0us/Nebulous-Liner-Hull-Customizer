@@ -66,6 +66,9 @@ struct MaterialDef
     bool trimBaked = false;
     QString normalPath;
     float normalStrength = 1.0f;
+    // _nameplateDecal: white markings (hull numbers, lettering) laid over the paint.
+    QString decalPath;
+    QString decalMode = QStringLiteral("luminance");
 };
 
 struct HullTypeDef

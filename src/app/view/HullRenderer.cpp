@@ -68,6 +68,10 @@ uniform bool uHasNormalMap;
 uniform sampler2D uNormalMap;
 uniform float uNormalStrength;
 
+uniform bool uHasDecal;
+uniform sampler2D uDecal;
+uniform bool uDecalUseAlpha;
+
 uniform float uAlbedoMean;      // luminance average of the albedo, used to keep paint brightness
 uniform float uAlbedoDetail;    // how strongly the albedo modulates the paint (0..1)
 uniform float uDecalStrength;   // white markings baked into the albedo
@@ -147,12 +151,20 @@ void main()
         // material colour: no livery tint and no exposure lift, or the copper turns pale.
         color = uMaterialColor.rgb * albedoSample;
     }
-    // Decals (hull numbers, lettering) are near-white in the albedo and stay white on both
-    // painted and fixed surfaces; the threshold is low because only 1-4% of the maps are white.
+    // Near-white albedo pixels are only a weak fallback: without the authored decal they are
+    // the grime highlights, not markings, so they must not wash a surface out.
     if (uHasAlbedo && uDecalStrength > 0.0) {
         float luminance = dot(albedoSample, vec3(0.2990, 0.5870, 0.1140));
-        float decal = smoothstep(0.72, 0.92, luminance);
-        color = mix(color, vec3(0.93), decal * clamp(uDecalStrength, 0.0, 1.0));
+        float highlight = smoothstep(0.80, 0.96, luminance);
+        color = mix(color, vec3(0.93), highlight * clamp(uDecalStrength, 0.0, 1.0) * 0.35);
+    }
+    // Authored nameplate decal (hull numbers, lettering) laid over paint and fixed surfaces.
+    if (uHasDecal) {
+        vec4 decalSample = texture(uDecal, vUv);
+        float amount = uDecalUseAlpha
+            ? decalSample.a
+            : smoothstep(0.30, 0.70, dot(decalSample.rgb, vec3(0.2990, 0.5870, 0.1140)));
+        color = mix(color, decalSample.rgb, clamp(amount, 0.0, 1.0) * clamp(uDecalStrength, 0.0, 1.0));
     }
 
     // Fixed three point rig in world space: key from upper front left, fill from lower right,
@@ -433,6 +445,18 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         if (hasNormalMap) {
             glActiveTexture(GL_TEXTURE2);
             glBindTexture(GL_TEXTURE_2D, normalId);
+        }
+
+        const QString decalPath = material ? material->decalPath : QString();
+        const GLuint decalId = gpu->hasUv ? texture(package, decalPath) : 0;
+        const bool hasDecal = decalId != 0;
+        program.setUniformValue("uHasDecal", hasDecal);
+        program.setUniformValue("uDecalUseAlpha",
+                                material && material->decalMode == QLatin1String("alpha"));
+        program.setUniformValue("uDecal", 3);
+        if (hasDecal) {
+            glActiveTexture(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_2D, decalId);
         }
 
         program.setUniformValue("uModel", item.world);
