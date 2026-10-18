@@ -35,6 +35,18 @@ HULLS = {
 
 IDENTITY_NODE = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), (1.0, 1.0, 1.0))
 
+#: Materials that are pure functional props (emitters, glazing) and never take
+#: the faction livery.  Everything a hull piece references is paintable by
+#: default: leaving a hull surface unpaintable makes the Container liners render
+#: flat white, because their albedo lives in an addressable bundle we do not have.
+FUNCTIONAL_MATERIALS = ("engine glow", "window", "light", "lamp", "flare",
+                        "emissive", "thruster glow", "fx")
+
+
+def is_functional_material(name):
+    lowered = (name or "").lower()
+    return any(pattern in lowered for pattern in FUNCTIONAL_MATERIALS)
+
 
 class Logger(object):
     def __init__(self, stream=None):
@@ -59,7 +71,13 @@ def file_sha256(path, chunk=1 << 20):
 
 
 class MaterialBuilder(object):
-    """Decodes the textures a material needs and writes them as PNG."""
+    """Decodes the textures a material needs and writes them as PNG.
+
+    A material is paintable when it belongs to a hull piece: in game the whole
+    surface takes the faction livery (_BasePaintTint / _StripePaintTint), whether
+    or not an albedo texture could be resolved.  Only clearly functional props
+    (emitters, glazing) keep a fixed colour.
+    """
 
     def __init__(self, graph, out_dir, tex_size, resource_stream, log):
         self.graph = graph
@@ -73,6 +91,8 @@ class MaterialBuilder(object):
         self.failures = []
         self._by_name = None
         self.mask_sources = {}
+        self.names = {}
+        self.fixed_names = []
 
     def texture_by_name(self):
         """name -> Texture2D pathID, for the addressable paint masks."""
@@ -142,18 +162,28 @@ class MaterialBuilder(object):
         if base is None:
             base = (1.0, 1.0, 1.0, 1.0)
 
-        textured = bool(environments.get("_BaseColorMap")
-                        or environments.get("_MainTex"))
+        has_albedo_map = bool(environments.get("_BaseColorMap")
+                             or environments.get("_MainTex"))
+        name = value.get("m_Name") or ""
+        paintable = not is_functional_material(name)
+        if not paintable:
+            self.fixed_names.append(name)
         index = len(self.definitions) + 1
+        if paintable and not has_albedo_map:
+            # No albedo to modulate: paint the livery straight onto the surface.
+            # A grey authored tint here would darken the livery a second time.
+            base_color = [1.0, 1.0, 1.0]
+        else:
+            base_color = [round(min(1.0, max(0.0, base[0])), 4),
+                          round(min(1.0, max(0.0, base[1])), 4),
+                          round(min(1.0, max(0.0, base[2])), 4)]
         definition = {
             "id": "t:%04d" % index,
-            # A material is paintable when it carries hull surface information
-            # (albedo and/or a _PaintMask); plain effect materials such as
-            # Windows or Engine Glow keep their authored colour instead.
-            "paintable": textured or "_PaintMask" in environments,
-            "baseColor": [round(min(1.0, max(0.0, base[0])), 4),
-                          round(min(1.0, max(0.0, base[1])), 4),
-                          round(min(1.0, max(0.0, base[2])), 4)],
+            # paintable is decided by ownership (see the class docstring): every
+            # material a hull piece references takes the faction livery unless it
+            # is a pure functional prop.
+            "paintable": paintable,
+            "baseColor": base_color,
             "albedo": "",
             "albedoMode": "multiply",
             "albedoMix": 0.0,
@@ -163,6 +193,7 @@ class MaterialBuilder(object):
             "trimBaked": False,
         }
         self.by_path[path_id] = definition
+        self.names[definition["id"]] = name
         self.definitions.append(definition)
 
         mask_path, mask_source = self.resolve_mask(environments)
@@ -528,6 +559,63 @@ def extract(bundle_path, out_dir, tex_size=512, log=None, max_bytes=None):
             "superstructures": [section.id for section in hull.superstructures],
         })
 
+    paintable_ids = {m["id"] for m in materials.definitions if m["paintable"]}
+    fixed_names = sorted(set(materials.fixed_names))
+    log("paintable materials: %d, fixed-colour props: %d %s"
+        % (len(paintable_ids), len(materials.definitions) - len(paintable_ids),
+           fixed_names))
+
+    # Every hull *body* material (the segment shells) must take the livery.
+    # Node names alone are not enough: the LOD groups also exist for thrusters and
+    # engine glows, so the hull body is identified by the segment naming
+    # ("... Bow/Core/Stern/Mid ...").
+    segment_words = ("bow", "core", "stern", "mid")
+    hull_surface_issues = []
+    container_surface = {}
+    by_id = {piece["id"]: piece for piece in catalog_pieces}
+    for piece in catalog_pieces:
+        if piece["kind"] != "primary":
+            continue
+        for node in piece["nodes"]:
+            if not node["mesh"] or not node["name"].upper().startswith("LOD"):
+                continue
+            material = node["material"]
+            if not material:
+                continue
+            lowered = (materials.names.get(material) or "").lower()
+            if not any(word in lowered for word in segment_words):
+                continue
+            if material not in paintable_ids:
+                hull_surface_issues.append((piece["id"], node["name"],
+                                            materials.names.get(material, material)))
+    for save_key, (role, container_path, display_name, prefab_path) in HULLS.items():
+        section_ids = [section.id for name in ("bows", "cores", "sterns")
+                       for section in getattr(hulls[save_key], name)]
+        involved = set()
+        unpainted = []
+        for section_id in section_ids:
+            piece = by_id.get(section_id)
+            if piece is None:
+                continue
+            for node in piece["nodes"]:
+                if not node["mesh"] or not node["name"].upper().startswith("LOD"):
+                    continue
+                if not node["material"]:
+                    continue
+                name_lowered = (materials.names.get(node["material"]) or "").lower()
+                if not any(word in name_lowered for word in segment_words):
+                    continue
+                involved.add(node["material"])
+                if node["material"] not in paintable_ids:
+                    unpainted.append(node["material"])
+        container_surface[save_key] = {
+            "materials": len(involved),
+            "unpainted": sorted(set(unpainted)),
+            "names": sorted(materials.names.get(m, m) for m in involved),
+        }
+    log("hull surface check: %d unpainted %s"
+        % (len(hull_surface_issues), hull_surface_issues[:4]))
+
     catalog = {
         "formatVersion": 1,
         "source": {
@@ -556,6 +644,10 @@ def extract(bundle_path, out_dir, tex_size=512, log=None, max_bytes=None):
         "vertices": builder.vertex_total,
         "indices": builder.index_total,
         "materials": len(materials.definitions),
+        "paintable": len(paintable_ids),
+        "fixedMaterials": fixed_names,
+        "hullSurfaceIssues": [list(item) for item in hull_surface_issues],
+        "hullSurface": container_surface,
         "maskSources": dict(materials.mask_sources),
         "textureFailures": materials.failures,
         "budgetBytes": max_bytes,

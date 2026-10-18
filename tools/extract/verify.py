@@ -267,6 +267,26 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
     report.check("texture decode rate >= 95%", rate >= 0.95,
                  "%d/%d (%.1f%%)" % (texture_ok, texture_total, rate * 100.0))
 
+    # --- paintable policy (ownership based, see export.MaterialBuilder) ---
+    paintable = [m for m in materials if m["paintable"]]
+    fixed = [m for m in materials if not m["paintable"]]
+    issues = stats.get("hullSurfaceIssues") or []
+    report.check("every hull body material is paintable", not issues,
+                 "%d paintable / %d fixed%s" % (
+                     len(paintable), len(fixed),
+                     "" if not issues else "; unpainted " + str(issues[:3])))
+    surfaces = stats.get("hullSurface") or {}
+    container = surfaces.get("Stock/Container Hauler")
+    empty_base = [m["id"] for m in paintable if not m["albedo"]
+                  and m["baseColor"] != [1.0, 1.0, 1.0]]
+    report.check("container hull surfaces take the livery",
+                 bool(container) and not container.get("unpainted")
+                 and not empty_base,
+                 "%d materials (%s), neutral baseColor %s" % (
+                     (container or {}).get("materials", 0),
+                     ", ".join((container or {}).get("names", [])[:4]),
+                     "ok" if not empty_base else str(empty_base[:3])))
+
     # A real (authored) stripe mask is far bigger than the 4x4 placeholder.
     real_masks = []
     placeholder_masks = []

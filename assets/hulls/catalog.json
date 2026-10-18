@@ -24326,7 +24326,7 @@
   },
   {
    "id": "t:0019",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24335,14 +24335,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0019.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0020",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24351,14 +24351,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0020.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0021",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24367,14 +24367,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0021.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0022",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24383,14 +24383,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0022.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0023",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24399,14 +24399,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0023.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0024",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24415,14 +24415,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0024.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0025",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24431,14 +24431,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0025.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0026",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24447,14 +24447,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0026.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0027",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24463,14 +24463,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0027.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0028",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24479,14 +24479,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0028.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0029",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24495,14 +24495,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0029.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0030",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24511,14 +24511,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0030.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0031",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24527,14 +24527,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0031.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0032",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24543,14 +24543,14 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0032.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0033",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24559,7 +24559,7 @@
    "albedo": "",
    "albedoMode": "multiply",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0033.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
