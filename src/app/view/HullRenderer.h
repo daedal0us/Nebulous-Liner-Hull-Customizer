@@ -32,7 +32,7 @@ public:
     void clearCaches();
 
     // Diagnostic render modes used to map a rendered feature back to the material that owns it.
-    enum class DebugView { Off, Materials, Mask, Albedo };
+    enum class DebugView { Off, Materials, Mask, Albedo, Uv };
     void setDebugView(DebugView view) { m_debugView = view; }
     // One "id #rrggbb" line per material drawn by the last Materials pass.
     QString debugLegend() const { return m_legend; }

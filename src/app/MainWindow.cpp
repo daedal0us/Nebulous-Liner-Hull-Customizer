@@ -540,6 +540,8 @@ void MainWindow::setDebugViewName(const QString &name)
         view = HullRenderer::DebugView::Mask;
     else if (name == QLatin1String("albedo"))
         view = HullRenderer::DebugView::Albedo;
+    else if (name == QLatin1String("uv"))
+        view = HullRenderer::DebugView::Uv;
     if (m_viewport)
         m_viewport->setDebugView(view);
 }

@@ -166,6 +166,12 @@ void main()
         fragColor = vec4(albedoSample, 1.0);
         return;
     }
+    if (uDebugMode == 4) {
+        // Atlas coordinate of this fragment, already un-rotated, so a screen pixel can be
+        // mapped straight back onto the exported texture.
+        fragColor = vec4(uvTex.x, uvTex.y, 0.0, 1.0);
+        return;
+    }
 
     vec3 color;
     if (uPainted) {
