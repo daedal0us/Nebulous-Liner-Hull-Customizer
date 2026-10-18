@@ -105,10 +105,15 @@ class MaterialBuilder(object):
         if base is None:
             base = (1.0, 1.0, 1.0, 1.0)
 
+        textured = bool(environments.get("_BaseColorMap")
+                        or environments.get("_MainTex"))
         index = len(self.definitions) + 1
         definition = {
             "id": "t:%04d" % index,
-            "paintable": "_PaintMask" in environments,
+            # A material is paintable when it carries hull surface information
+            # (albedo and/or a _PaintMask); plain effect materials such as
+            # Windows or Engine Glow keep their authored colour instead.
+            "paintable": textured or "_PaintMask" in environments,
             "baseColor": [round(min(1.0, max(0.0, base[0])), 4),
                           round(min(1.0, max(0.0, base[1])), 4),
                           round(min(1.0, max(0.0, base[2])), 4)],
@@ -127,8 +132,12 @@ class MaterialBuilder(object):
         if mask_path:
             self._build_mask(definition, mask_path)
         elif definition["paintable"]:
-            self.log("    material %s: paintable without a _PaintMask texture"
-                     % definition["id"])
+            # No authored stripe mask: an all black mask keeps the renderer on
+            # the base paint everywhere instead of falling back to the trim tint.
+            relative = "mask/%s.png" % definition["id"].split(":")[1]
+            textures.write_png(os.path.join(self.out_dir, relative), 4, 4, 1,
+                               bytearray(16))
+            definition["mask"] = relative
 
         albedo_path = environments.get("_BaseColorMap") or environments.get("_MainTex")
         if albedo_path:
@@ -230,9 +239,9 @@ class PieceBuilder(object):
         nodes = []
         node_of_go = {}
         transforms = {}
-        matrix_cache = {}
+        space = hierarchy.SectionSpace(graph, section.root_go)
         for depth, go in graph.walk(section.root_go):
-            world = hierarchy.world_transform(graph, go, transforms)
+            world = space.transform_of_game_object(graph, go, transforms)
             parent = graph.parent_of(go)
             entry = {
                 "parent": node_of_go.get(parent, -1) if depth else -1,
@@ -364,19 +373,57 @@ def _snap(value):
     return {"p": _vec(position), "q": _vec(rotation)}
 
 
+def paint_mask_score(graph, section, cache=None):
+    """1 when any material under the section exposes a _PaintMask texture."""
+    cache = cache if cache is not None else {}
+    cached = cache.get(section.root_go)
+    if cached is not None:
+        return cached
+    score = 0
+    for _, go in graph.walk(section.root_go):
+        for renderer in graph.components_by_class_id(go, hierarchy.CLASS_MESH_RENDERER):
+            for material in graph.value(renderer).get("m_Materials") or ():
+                path_id = hierarchy.pptr_path_id(material)
+                if not path_id:
+                    continue
+                properties = graph.value(path_id).get("m_SavedProperties") or {}
+                for entry in properties.get("m_TexEnvs") or ():
+                    if entry.get("first") == "_PaintMask" and hierarchy.pptr_path_id(
+                            (entry.get("second") or {}).get("m_Texture")):
+                        score = 1
+                        break
+            if score:
+                break
+        if score:
+            break
+    cache[section.root_go] = score
+    return score
+
+
 def collect_pieces(graph, hulls):
-    """Unique pieces keyed by GUID, in hull type / group order."""
-    ordered = []
-    seen = {}
+    """Unique pieces keyed by GUID; shared keys prefer the instance that
+    carries a _PaintMask (otherwise the stripe colour could never be shown)."""
+    scores = {}
+    candidates = {}
+    order = []
     for save_key in HULLS:
         hull = hulls[save_key]
         for group in ("bows", "cores", "sterns", "superstructures"):
             for section in getattr(hull, group):
-                if section.key in seen:
-                    continue
-                seen[section.key] = section
-                ordered.append(section)
-    return ordered
+                if section.key not in candidates:
+                    candidates[section.key] = []
+                    order.append(section.key)
+                candidates[section.key].append(section)
+    chosen = []
+    for key in order:
+        best = None
+        best_score = -1
+        for section in candidates[key]:
+            score = paint_mask_score(graph, section, scores)
+            if score > best_score:
+                best, best_score = section, score
+        chosen.append(best)
+    return chosen
 
 
 def extract(bundle_path, out_dir, tex_size=512, log=None, max_bytes=None):

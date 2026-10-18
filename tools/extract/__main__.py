@@ -60,11 +60,11 @@ def main(argv=None):
     print("-------------------")
     report.render(sys.stdout)
     print()
-    print("stats: %d pieces, %d mesh files, %d vertices, %d materials, "
+    print("stats: %d pieces, %d meshes (%d vertices), %d materials, "
           "%d texture failures, %.2f MiB" % (
-              extra["meshFiles"] and stats["pieces"] or stats["pieces"],
-              extra["meshFiles"], extra["vertices"], stats["materials"],
-              len(stats["textureFailures"]), extra["totalBytes"] / 1048576.0))
+              stats["pieces"], extra["meshFiles"], extra["vertices"],
+              stats["materials"], len(stats["textureFailures"]),
+              extra["totalBytes"] / 1048576.0))
     if report.failed:
         print("\n%d check(s) failed" % len(report.failed))
         return 1

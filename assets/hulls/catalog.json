@@ -103,7 +103,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     8.5
     ],
     "q": [
      0.0,
@@ -116,8 +116,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      2.65,
+      16.68
      ],
      "q": [
       0.0,
@@ -1479,7 +1479,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     5.0
     ],
     "q": [
      0.0,
@@ -1492,8 +1492,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      3.65,
+      15.136
      ],
      "q": [
       0.0,
@@ -2943,7 +2943,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     5.25
     ],
     "q": [
      0.0,
@@ -4095,7 +4095,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     5.0
     ],
     "q": [
      0.0,
@@ -4108,7 +4108,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -4.25
     ],
     "q": [
      0.0,
@@ -4121,8 +4121,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      4.02,
+      1.74
      ],
      "q": [
       0.0,
@@ -5849,7 +5849,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     5.0
     ],
     "q": [
      0.0,
@@ -5862,7 +5862,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -9.5
     ],
     "q": [
      0.0,
@@ -5875,8 +5875,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      3.75,
+      1.5
      ],
      "q": [
       0.0,
@@ -7131,7 +7131,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     8.5
     ],
     "q": [
      0.0,
@@ -7144,7 +7144,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -9.25
     ],
     "q": [
      0.0,
@@ -7157,8 +7157,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      3.52,
+      -5.11
      ],
      "q": [
       0.0,
@@ -9039,7 +9039,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -9.45
     ],
     "q": [
      0.0,
@@ -9912,7 +9912,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -9.5
     ],
     "q": [
      0.0,
@@ -9926,8 +9926,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      3.02,
+      -12.76
      ],
      "q": [
       0.0,
@@ -10800,7 +10800,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -4.5
     ],
     "q": [
      0.0,
@@ -10814,8 +10814,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      4.02,
+      -7.51
      ],
      "q": [
       0.0,
@@ -11638,7 +11638,7 @@
   {
    "id": "p:42d07c1a",
    "key": "42d07c1a-156b-4057-aaca-7a2024751423",
-   "debugName": "Superstructure 1 Civ Variant",
+   "debugName": "Superstructure 1",
    "kind": "secondary",
    "foreSnap": null,
    "aftSnap": null,
@@ -11665,7 +11665,7 @@
      ],
      "mesh": "",
      "material": "",
-     "name": "Superstructure 1 Civ Variant"
+     "name": "Superstructure 1"
     },
     {
      "parent": 0,
@@ -11964,7 +11964,7 @@
   {
    "id": "p:59344a67",
    "key": "59344a67-9e7b-43df-9f7c-505ad9a0ab87",
-   "debugName": "Superstructure 4 Civ Variant",
+   "debugName": "Superstructure 4",
    "kind": "secondary",
    "foreSnap": null,
    "aftSnap": null,
@@ -11991,7 +11991,7 @@
      ],
      "mesh": "",
      "material": "",
-     "name": "Superstructure 4 Civ Variant"
+     "name": "Superstructure 4"
     },
     {
      "parent": 0,
@@ -12294,7 +12294,7 @@
   {
    "id": "p:9ebcea74",
    "key": "9ebcea74-e9c9-45b3-b616-e12e3f491024",
-   "debugName": "Superstructure 3 Civ Variant",
+   "debugName": "Superstructure 3",
    "kind": "secondary",
    "foreSnap": null,
    "aftSnap": null,
@@ -12321,7 +12321,7 @@
      ],
      "mesh": "",
      "material": "",
-     "name": "Superstructure 3 Civ Variant"
+     "name": "Superstructure 3"
     },
     {
      "parent": 0,
@@ -12620,7 +12620,7 @@
   {
    "id": "p:c9d04445",
    "key": "c9d04445-3558-46b4-b6fc-7dca8617d438",
-   "debugName": "Superstructure 2 Civ Variant",
+   "debugName": "Superstructure 2",
    "kind": "secondary",
    "foreSnap": null,
    "aftSnap": null,
@@ -12647,7 +12647,7 @@
      ],
      "mesh": "",
      "material": "",
-     "name": "Superstructure 2 Civ Variant"
+     "name": "Superstructure 2"
     },
     {
      "parent": 0,
@@ -12953,7 +12953,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     8.0
     ],
     "q": [
      0.0,
@@ -14156,7 +14156,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     5.453
     ],
     "q": [
      0.0,
@@ -14169,8 +14169,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      3.84,
+      7.96
      ],
      "q": [
       0.0,
@@ -15395,7 +15395,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     7.59
     ],
     "q": [
      0.0,
@@ -15408,8 +15408,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      4.01,
+      13.14
      ],
      "q": [
       0.0,
@@ -15956,7 +15956,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0305",
+     "mesh": "m:0283",
      "material": "t:0004",
      "name": "Crate"
     },
@@ -15978,7 +15978,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0306",
+     "mesh": "m:0284",
      "material": "t:0004",
      "name": "Crate"
     },
@@ -16000,7 +16000,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0307",
+     "mesh": "m:0285",
      "material": "t:0004",
      "name": "Crate (1)"
     },
@@ -16022,7 +16022,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0308",
+     "mesh": "m:0286",
      "material": "t:0004",
      "name": "Crate (2)"
     },
@@ -16088,7 +16088,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0309",
+     "mesh": "m:0305",
      "material": "t:0023",
      "name": "Pad"
     },
@@ -16132,7 +16132,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0310",
+     "mesh": "m:0306",
      "material": "t:0023",
      "name": "Pad"
     },
@@ -16572,12 +16572,12 @@
     "m:0302",
     "m:0303",
     "m:0304",
+    "m:0283",
+    "m:0284",
+    "m:0285",
+    "m:0286",
     "m:0305",
-    "m:0306",
-    "m:0307",
-    "m:0308",
-    "m:0309",
-    "m:0310"
+    "m:0306"
    ]
   },
   {
@@ -16589,7 +16589,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     5.44
     ],
     "q": [
      0.0,
@@ -16602,7 +16602,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -5.43
     ],
     "q": [
      0.0,
@@ -16615,8 +16615,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      4.72,
+      2.99
      ],
      "q": [
       0.0,
@@ -16723,7 +16723,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0311",
+     "mesh": "m:0307",
      "material": "t:0025",
      "name": "LOD0"
     },
@@ -16745,7 +16745,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0312",
+     "mesh": "m:0308",
      "material": "t:0025",
      "name": "LOD1"
     },
@@ -16767,7 +16767,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0313",
+     "mesh": "m:0309",
      "material": "t:0025",
      "name": "LOD2"
     },
@@ -16789,7 +16789,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0314",
+     "mesh": "m:0310",
      "material": "t:0025",
      "name": "LOD3"
     },
@@ -16811,7 +16811,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0315",
+     "mesh": "m:0311",
      "material": "t:0025",
      "name": "Mount C4 C1 Cap"
     },
@@ -16833,7 +16833,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0316",
+     "mesh": "m:0312",
      "material": "t:0025",
      "name": "Mount C4 C2 Cap"
     },
@@ -16965,7 +16965,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0317",
+     "mesh": "m:0313",
      "material": "t:0025",
      "name": "Pad"
     },
@@ -17009,7 +17009,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0318",
+     "mesh": "m:0314",
      "material": "t:0025",
      "name": "Pad"
     },
@@ -17317,7 +17317,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0319",
+     "mesh": "m:0315",
      "material": "t:0004",
      "name": "Base"
     },
@@ -17339,7 +17339,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0320",
+     "mesh": "m:0316",
      "material": "t:0004",
      "name": "Panel"
     },
@@ -17427,7 +17427,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0321",
+     "mesh": "m:0317",
      "material": "t:0004",
      "name": "Base"
     },
@@ -17449,7 +17449,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0322",
+     "mesh": "m:0318",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -17493,7 +17493,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0323",
+     "mesh": "m:0319",
      "material": "t:0004",
      "name": "Base"
     },
@@ -17515,7 +17515,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0324",
+     "mesh": "m:0320",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -17719,6 +17719,10 @@
     }
    ],
    "meshIds": [
+    "m:0307",
+    "m:0308",
+    "m:0309",
+    "m:0310",
     "m:0311",
     "m:0312",
     "m:0313",
@@ -17728,11 +17732,7 @@
     "m:0317",
     "m:0318",
     "m:0319",
-    "m:0320",
-    "m:0321",
-    "m:0322",
-    "m:0323",
-    "m:0324"
+    "m:0320"
    ]
   },
   {
@@ -17744,7 +17744,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     8.0
     ],
     "q": [
      0.0,
@@ -17757,7 +17757,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -10.12
     ],
     "q": [
      0.0,
@@ -17770,8 +17770,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      3.57,
+      5.34
      ],
      "q": [
       0.0,
@@ -17892,7 +17892,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0325",
+     "mesh": "m:0321",
      "material": "t:0026",
      "name": "LOD0"
     },
@@ -17914,7 +17914,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0326",
+     "mesh": "m:0322",
      "material": "t:0026",
      "name": "LOD1"
     },
@@ -17936,7 +17936,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0327",
+     "mesh": "m:0323",
      "material": "t:0026",
      "name": "LOD2"
     },
@@ -17958,7 +17958,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0328",
+     "mesh": "m:0324",
      "material": "t:0026",
      "name": "LOD3"
     },
@@ -17980,7 +17980,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0329",
+     "mesh": "m:0325",
      "material": "t:0026",
      "name": "Mount C4 C1 Cap"
     },
@@ -18002,7 +18002,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0330",
+     "mesh": "m:0326",
      "material": "t:0026",
      "name": "Mount C4 C2 Cap"
     },
@@ -18134,7 +18134,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0331",
+     "mesh": "m:0327",
      "material": "t:0026",
      "name": "Pad"
     },
@@ -18178,7 +18178,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0332",
+     "mesh": "m:0328",
      "material": "t:0026",
      "name": "Pad"
     },
@@ -18486,7 +18486,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0333",
+     "mesh": "m:0329",
      "material": "t:0004",
      "name": "Base"
     },
@@ -18508,7 +18508,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0334",
+     "mesh": "m:0330",
      "material": "t:0004",
      "name": "Panel"
     },
@@ -18574,7 +18574,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0335",
+     "mesh": "m:0331",
      "material": "t:0004",
      "name": "Cylinder.042"
     },
@@ -18596,7 +18596,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0336",
+     "mesh": "m:0332",
      "material": "t:0004",
      "name": "Cylinder.042 (1)"
     },
@@ -18618,7 +18618,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0337",
+     "mesh": "m:0333",
      "material": "t:0004",
      "name": "Cylinder.042 (2)"
     },
@@ -18640,7 +18640,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0338",
+     "mesh": "m:0334",
      "material": "t:0004",
      "name": "Cylinder.042 (3)"
     },
@@ -18662,7 +18662,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0339",
+     "mesh": "m:0335",
      "material": "t:0004",
      "name": "Cylinder.042 (4)"
     },
@@ -18684,7 +18684,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0340",
+     "mesh": "m:0336",
      "material": "t:0004",
      "name": "Cylinder.042 (5)"
     },
@@ -18728,7 +18728,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0341",
+     "mesh": "m:0337",
      "material": "t:0004",
      "name": "Crate"
     },
@@ -18750,7 +18750,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0342",
+     "mesh": "m:0338",
      "material": "t:0004",
      "name": "Crate (1)"
     },
@@ -18772,7 +18772,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0343",
+     "mesh": "m:0339",
      "material": "t:0004",
      "name": "Crate (2)"
     },
@@ -18794,7 +18794,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0344",
+     "mesh": "m:0340",
      "material": "t:0004",
      "name": "Crate (3)"
     },
@@ -18816,7 +18816,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0345",
+     "mesh": "m:0341",
      "material": "t:0004",
      "name": "Crate (4)"
     },
@@ -18838,7 +18838,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0346",
+     "mesh": "m:0342",
      "material": "t:0004",
      "name": "Crate (5)"
     },
@@ -18860,7 +18860,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0347",
+     "mesh": "m:0343",
      "material": "t:0004",
      "name": "Crate (6)"
     },
@@ -18882,7 +18882,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0348",
+     "mesh": "m:0344",
      "material": "t:0004",
      "name": "Crate (7)"
     },
@@ -18970,7 +18970,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0349",
+     "mesh": "m:0345",
      "material": "t:0004",
      "name": "Base"
     },
@@ -18992,7 +18992,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0350",
+     "mesh": "m:0346",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -19036,7 +19036,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0351",
+     "mesh": "m:0347",
      "material": "t:0004",
      "name": "Base"
     },
@@ -19058,7 +19058,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0352",
+     "mesh": "m:0348",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -19102,7 +19102,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0353",
+     "mesh": "m:0349",
      "material": "t:0004",
      "name": "Base"
     },
@@ -19124,7 +19124,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0354",
+     "mesh": "m:0350",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -19168,7 +19168,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0355",
+     "mesh": "m:0351",
      "material": "t:0004",
      "name": "Base"
     },
@@ -19190,7 +19190,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0356",
+     "mesh": "m:0352",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -19212,7 +19212,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0357",
+     "mesh": "m:0353",
      "material": "t:0004",
      "name": "Dressing - Tower Crane Vertical"
     },
@@ -19234,7 +19234,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0358",
+     "mesh": "m:0354",
      "material": "t:0004",
      "name": "Tower"
     },
@@ -19256,7 +19256,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0359",
+     "mesh": "m:0355",
      "material": "t:0004",
      "name": "Slider"
     },
@@ -19278,7 +19278,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0360",
+     "mesh": "m:0356",
      "material": "t:0004",
      "name": "Crane"
     },
@@ -19482,6 +19482,10 @@
     }
    ],
    "meshIds": [
+    "m:0321",
+    "m:0322",
+    "m:0323",
+    "m:0324",
     "m:0325",
     "m:0326",
     "m:0327",
@@ -19513,11 +19517,7 @@
     "m:0353",
     "m:0354",
     "m:0355",
-    "m:0356",
-    "m:0357",
-    "m:0358",
-    "m:0359",
-    "m:0360"
+    "m:0356"
    ]
   },
   {
@@ -19529,7 +19529,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     7.56
     ],
     "q": [
      0.0,
@@ -19542,7 +19542,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -7.57
     ],
     "q": [
      0.0,
@@ -19555,8 +19555,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      5.11,
+      5.06
      ],
      "q": [
       0.0,
@@ -19663,7 +19663,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0361",
+     "mesh": "m:0357",
      "material": "t:0027",
      "name": "LOD0"
     },
@@ -19685,7 +19685,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0362",
+     "mesh": "m:0358",
      "material": "t:0027",
      "name": "LOD1"
     },
@@ -19707,7 +19707,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0363",
+     "mesh": "m:0359",
      "material": "t:0027",
      "name": "LOD2"
     },
@@ -19729,7 +19729,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0364",
+     "mesh": "m:0360",
      "material": "t:0027",
      "name": "LOD3"
     },
@@ -19751,7 +19751,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0365",
+     "mesh": "m:0361",
      "material": "t:0027",
      "name": "Mount C4 C1 Cap"
     },
@@ -19773,7 +19773,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0366",
+     "mesh": "m:0362",
      "material": "t:0027",
      "name": "Mount C4 C2 Cap"
     },
@@ -19905,7 +19905,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0367",
+     "mesh": "m:0363",
      "material": "t:0027",
      "name": "Pad"
     },
@@ -19949,7 +19949,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0368",
+     "mesh": "m:0364",
      "material": "t:0027",
      "name": "Pad"
     },
@@ -20257,7 +20257,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0369",
+     "mesh": "m:0365",
      "material": "t:0004",
      "name": "Base"
     },
@@ -20279,7 +20279,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0370",
+     "mesh": "m:0366",
      "material": "t:0004",
      "name": "Panel"
     },
@@ -20367,7 +20367,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0371",
+     "mesh": "m:0317",
      "material": "t:0004",
      "name": "Base"
     },
@@ -20389,7 +20389,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0372",
+     "mesh": "m:0318",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -20433,7 +20433,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0373",
+     "mesh": "m:0319",
      "material": "t:0004",
      "name": "Base"
     },
@@ -20455,7 +20455,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0374",
+     "mesh": "m:0320",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -20659,20 +20659,20 @@
     }
    ],
    "meshIds": [
+    "m:0357",
+    "m:0358",
+    "m:0359",
+    "m:0360",
     "m:0361",
     "m:0362",
     "m:0363",
     "m:0364",
     "m:0365",
     "m:0366",
-    "m:0367",
-    "m:0368",
-    "m:0369",
-    "m:0370",
-    "m:0371",
-    "m:0372",
-    "m:0373",
-    "m:0374"
+    "m:0317",
+    "m:0318",
+    "m:0319",
+    "m:0320"
    ]
   },
   {
@@ -20684,7 +20684,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -5.44
     ],
     "q": [
      0.0,
@@ -20698,8 +20698,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      4.51,
+      -8.76
      ],
      "q": [
       0.0,
@@ -20806,7 +20806,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0375",
+     "mesh": "m:0367",
      "material": "t:0028",
      "name": "LOD0"
     },
@@ -20828,7 +20828,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0376",
+     "mesh": "m:0368",
      "material": "t:0002",
      "name": "LOD0#1"
     },
@@ -20850,7 +20850,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0377",
+     "mesh": "m:0369",
      "material": "t:0029",
      "name": "LOD0#2"
     },
@@ -20872,7 +20872,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0378",
+     "mesh": "m:0370",
      "material": "t:0003",
      "name": "LOD0#3"
     },
@@ -20894,7 +20894,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0379",
+     "mesh": "m:0371",
      "material": "t:0028",
      "name": "LOD1"
     },
@@ -20916,7 +20916,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0380",
+     "mesh": "m:0372",
      "material": "t:0029",
      "name": "LOD1#1"
     },
@@ -20938,7 +20938,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0381",
+     "mesh": "m:0373",
      "material": "t:0003",
      "name": "LOD1#2"
     },
@@ -20960,7 +20960,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0382",
+     "mesh": "m:0374",
      "material": "t:0002",
      "name": "LOD1#3"
     },
@@ -20982,7 +20982,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0383",
+     "mesh": "m:0375",
      "material": "t:0028",
      "name": "LOD2"
     },
@@ -21004,7 +21004,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0384",
+     "mesh": "m:0376",
      "material": "t:0029",
      "name": "LOD2#1"
     },
@@ -21026,7 +21026,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0385",
+     "mesh": "m:0377",
      "material": "t:0003",
      "name": "LOD2#2"
     },
@@ -21048,7 +21048,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0386",
+     "mesh": "m:0378",
      "material": "t:0002",
      "name": "LOD2#3"
     },
@@ -21070,7 +21070,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0387",
+     "mesh": "m:0379",
      "material": "t:0028",
      "name": "LOD3"
     },
@@ -21092,7 +21092,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0388",
+     "mesh": "m:0380",
      "material": "t:0029",
      "name": "LOD3#1"
     },
@@ -21114,7 +21114,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0389",
+     "mesh": "m:0381",
      "material": "t:0003",
      "name": "LOD3#2"
     },
@@ -21136,7 +21136,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0390",
+     "mesh": "m:0382",
      "material": "t:0002",
      "name": "LOD3#3"
     },
@@ -21686,7 +21686,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0391",
+     "mesh": "m:0383",
      "material": "t:0004",
      "name": "Base"
     },
@@ -21708,7 +21708,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0392",
+     "mesh": "m:0384",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -21752,7 +21752,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0393",
+     "mesh": "m:0385",
      "material": "t:0004",
      "name": "Base"
     },
@@ -21774,12 +21774,20 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0394",
+     "mesh": "m:0386",
      "material": "t:0004",
      "name": "Arm"
     }
    ],
    "meshIds": [
+    "m:0367",
+    "m:0368",
+    "m:0369",
+    "m:0370",
+    "m:0371",
+    "m:0372",
+    "m:0373",
+    "m:0374",
     "m:0375",
     "m:0376",
     "m:0377",
@@ -21791,15 +21799,7 @@
     "m:0383",
     "m:0384",
     "m:0385",
-    "m:0386",
-    "m:0387",
-    "m:0388",
-    "m:0389",
-    "m:0390",
-    "m:0391",
-    "m:0392",
-    "m:0393",
-    "m:0394"
+    "m:0386"
    ]
   },
   {
@@ -21811,7 +21811,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -10.12
     ],
     "q": [
      0.0,
@@ -21825,8 +21825,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      3.8,
+      -12.9
      ],
      "q": [
       0.0,
@@ -21933,7 +21933,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0395",
+     "mesh": "m:0387",
      "material": "t:0030",
      "name": "LOD0"
     },
@@ -21955,7 +21955,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0396",
+     "mesh": "m:0388",
      "material": "t:0002",
      "name": "LOD0#1"
     },
@@ -21977,7 +21977,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0397",
+     "mesh": "m:0389",
      "material": "t:0031",
      "name": "LOD0#2"
     },
@@ -21999,7 +21999,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0398",
+     "mesh": "m:0390",
      "material": "t:0003",
      "name": "LOD0#3"
     },
@@ -22021,7 +22021,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0399",
+     "mesh": "m:0391",
      "material": "t:0030",
      "name": "LOD1"
     },
@@ -22043,7 +22043,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0400",
+     "mesh": "m:0392",
      "material": "t:0031",
      "name": "LOD1#1"
     },
@@ -22065,7 +22065,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0401",
+     "mesh": "m:0393",
      "material": "t:0003",
      "name": "LOD1#2"
     },
@@ -22087,7 +22087,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0402",
+     "mesh": "m:0394",
      "material": "t:0002",
      "name": "LOD1#3"
     },
@@ -22109,7 +22109,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0403",
+     "mesh": "m:0395",
      "material": "t:0030",
      "name": "LOD2"
     },
@@ -22131,7 +22131,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0404",
+     "mesh": "m:0396",
      "material": "t:0031",
      "name": "LOD2#1"
     },
@@ -22153,7 +22153,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0405",
+     "mesh": "m:0397",
      "material": "t:0002",
      "name": "LOD2#2"
     },
@@ -22175,7 +22175,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0406",
+     "mesh": "m:0398",
      "material": "t:0003",
      "name": "LOD2#3"
     },
@@ -22197,7 +22197,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0407",
+     "mesh": "m:0399",
      "material": "t:0030",
      "name": "LOD3"
     },
@@ -22219,7 +22219,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0408",
+     "mesh": "m:0400",
      "material": "t:0031",
      "name": "LOD3#1"
     },
@@ -22241,7 +22241,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0409",
+     "mesh": "m:0401",
      "material": "t:0002",
      "name": "LOD3#2"
     },
@@ -22263,7 +22263,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0410",
+     "mesh": "m:0402",
      "material": "t:0003",
      "name": "LOD3#3"
     },
@@ -22813,7 +22813,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0411",
+     "mesh": "m:0403",
      "material": "t:0004",
      "name": "Base"
     },
@@ -22835,7 +22835,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0412",
+     "mesh": "m:0404",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -22879,7 +22879,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0413",
+     "mesh": "m:0405",
      "material": "t:0004",
      "name": "Base"
     },
@@ -22901,12 +22901,20 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0414",
+     "mesh": "m:0406",
      "material": "t:0004",
      "name": "Arm"
     }
    ],
    "meshIds": [
+    "m:0387",
+    "m:0388",
+    "m:0389",
+    "m:0390",
+    "m:0391",
+    "m:0392",
+    "m:0393",
+    "m:0394",
     "m:0395",
     "m:0396",
     "m:0397",
@@ -22918,15 +22926,7 @@
     "m:0403",
     "m:0404",
     "m:0405",
-    "m:0406",
-    "m:0407",
-    "m:0408",
-    "m:0409",
-    "m:0410",
-    "m:0411",
-    "m:0412",
-    "m:0413",
-    "m:0414"
+    "m:0406"
    ]
   },
   {
@@ -22938,7 +22938,7 @@
     "p": [
      0.0,
      0.0,
-     0.0
+     -7.58
     ],
     "q": [
      0.0,
@@ -22952,8 +22952,8 @@
     {
      "p": [
       0.0,
-      0.0,
-      0.0
+      5.46,
+      -11.55
      ],
      "q": [
       0.0,
@@ -23060,7 +23060,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0415",
+     "mesh": "m:0407",
      "material": "t:0032",
      "name": "LOD0"
     },
@@ -23082,7 +23082,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0416",
+     "mesh": "m:0408",
      "material": "t:0002",
      "name": "LOD0#1"
     },
@@ -23104,7 +23104,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0417",
+     "mesh": "m:0409",
      "material": "t:0033",
      "name": "LOD0#2"
     },
@@ -23126,7 +23126,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0418",
+     "mesh": "m:0410",
      "material": "t:0003",
      "name": "LOD0#3"
     },
@@ -23148,7 +23148,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0419",
+     "mesh": "m:0411",
      "material": "t:0032",
      "name": "LOD1"
     },
@@ -23170,7 +23170,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0420",
+     "mesh": "m:0412",
      "material": "t:0033",
      "name": "LOD1#1"
     },
@@ -23192,7 +23192,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0421",
+     "mesh": "m:0413",
      "material": "t:0003",
      "name": "LOD1#2"
     },
@@ -23214,7 +23214,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0422",
+     "mesh": "m:0414",
      "material": "t:0002",
      "name": "LOD1#3"
     },
@@ -23236,7 +23236,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0423",
+     "mesh": "m:0415",
      "material": "t:0032",
      "name": "LOD2"
     },
@@ -23258,7 +23258,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0424",
+     "mesh": "m:0416",
      "material": "t:0033",
      "name": "LOD2#1"
     },
@@ -23280,7 +23280,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0425",
+     "mesh": "m:0417",
      "material": "t:0002",
      "name": "LOD2#2"
     },
@@ -23302,7 +23302,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0426",
+     "mesh": "m:0418",
      "material": "t:0003",
      "name": "LOD2#3"
     },
@@ -23324,7 +23324,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0427",
+     "mesh": "m:0419",
      "material": "t:0032",
      "name": "LOD3"
     },
@@ -23346,7 +23346,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0428",
+     "mesh": "m:0420",
      "material": "t:0033",
      "name": "LOD3#1"
     },
@@ -23368,7 +23368,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0429",
+     "mesh": "m:0421",
      "material": "t:0003",
      "name": "LOD3#2"
     },
@@ -23390,7 +23390,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0430",
+     "mesh": "m:0422",
      "material": "t:0002",
      "name": "LOD3#3"
     },
@@ -23918,7 +23918,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0431",
+     "mesh": "m:0403",
      "material": "t:0004",
      "name": "Base"
     },
@@ -23940,7 +23940,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0432",
+     "mesh": "m:0404",
      "material": "t:0004",
      "name": "Arm"
     },
@@ -23984,7 +23984,7 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0433",
+     "mesh": "m:0405",
      "material": "t:0004",
      "name": "Base"
     },
@@ -24006,12 +24006,20 @@
       1.0,
       1.0
      ],
-     "mesh": "m:0434",
+     "mesh": "m:0406",
      "material": "t:0004",
      "name": "Arm"
     }
    ],
    "meshIds": [
+    "m:0407",
+    "m:0408",
+    "m:0409",
+    "m:0410",
+    "m:0411",
+    "m:0412",
+    "m:0413",
+    "m:0414",
     "m:0415",
     "m:0416",
     "m:0417",
@@ -24020,25 +24028,17 @@
     "m:0420",
     "m:0421",
     "m:0422",
-    "m:0423",
-    "m:0424",
-    "m:0425",
-    "m:0426",
-    "m:0427",
-    "m:0428",
-    "m:0429",
-    "m:0430",
-    "m:0431",
-    "m:0432",
-    "m:0433",
-    "m:0434"
+    "m:0403",
+    "m:0404",
+    "m:0405",
+    "m:0406"
    ]
   }
  ],
  "materials": [
   {
    "id": "t:0001",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24047,14 +24047,14 @@
    "albedo": "albedo/0001.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0001.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0002",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24063,7 +24063,7 @@
    "albedo": "albedo/0002.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0002.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
@@ -24086,7 +24086,7 @@
   },
   {
    "id": "t:0004",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     0.8302,
     0.7302,
@@ -24095,14 +24095,14 @@
    "albedo": "albedo/0004.png",
    "albedoMode": "overlay",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0004.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0005",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24111,14 +24111,14 @@
    "albedo": "albedo/0005.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0005.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0006",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24127,14 +24127,14 @@
    "albedo": "albedo/0006.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0006.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0007",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24143,14 +24143,14 @@
    "albedo": "albedo/0007.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0007.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0008",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24159,14 +24159,14 @@
    "albedo": "albedo/0008.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0008.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0009",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24175,14 +24175,14 @@
    "albedo": "albedo/0009.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0009.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0010",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24191,14 +24191,14 @@
    "albedo": "albedo/0010.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0010.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0011",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24207,14 +24207,14 @@
    "albedo": "albedo/0011.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0011.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0012",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24223,14 +24223,14 @@
    "albedo": "albedo/0012.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0012.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0013",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24239,14 +24239,14 @@
    "albedo": "albedo/0013.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0013.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0014",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24255,14 +24255,14 @@
    "albedo": "albedo/0014.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0014.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0015",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24271,14 +24271,14 @@
    "albedo": "albedo/0015.png",
    "albedoMode": "multiply",
    "albedoMix": 0.35,
-   "mask": "",
+   "mask": "mask/0015.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
   },
   {
    "id": "t:0016",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24287,7 +24287,7 @@
    "albedo": "albedo/0016.png",
    "albedoMode": "overlay",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0016.png",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false
@@ -24310,7 +24310,7 @@
   },
   {
    "id": "t:0018",
-   "paintable": false,
+   "paintable": true,
    "baseColor": [
     1.0,
     1.0,
@@ -24319,9 +24319,9 @@
    "albedo": "albedo/0018.png",
    "albedoMode": "overlay",
    "albedoMix": 0.0,
-   "mask": "",
+   "mask": "mask/0018.png",
    "maskChannel": "r",
-   "maskInvert": false,
+   "maskInvert": true,
    "trimBaked": false
   },
   {

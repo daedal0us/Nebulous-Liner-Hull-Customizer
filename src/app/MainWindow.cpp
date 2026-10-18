@@ -59,7 +59,11 @@ MainWindow::MainWindow(QWidget *parent)
     m_recentFiles = settings.value(QStringLiteral("files/recent")).toStringList();
 
     m_packageError.clear();
-    const QString root = locateAssetsRoot();
+    const QStringList appArgs = QCoreApplication::arguments();
+    const int assetsIndex = appArgs.indexOf(QStringLiteral("--assets"));
+    const QString root = assetsIndex >= 0 && assetsIndex + 1 < appArgs.size()
+        ? appArgs.at(assetsIndex + 1)
+        : locateAssetsRoot();
     QString error;
     if (root.isEmpty() || !m_package.load(root, &error)) {
         m_packageError = root.isEmpty()

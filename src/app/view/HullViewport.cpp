@@ -80,20 +80,23 @@ void HullViewport::paintGL()
     functions->glEnable(GL_DEPTH_TEST);
     functions->glClearDepthf(1.0f);
 
-    const int splitX = int(width() * 0.45);
-    const int rightWidth = width() - splitX;
+    const qreal dpr = devicePixelRatioF();
+    const int pixelWidth = int(width() * dpr);
+    const int pixelHeight = int(height() * dpr);
+    const int splitX = int(pixelWidth * 0.45);
+    const int rightWidth = pixelWidth - splitX;
     const int leftWidth = splitX;
 
-    functions->glViewport(0, 0, leftWidth, height());
-    functions->glScissor(0, 0, leftWidth, height());
+    functions->glViewport(0, 0, leftWidth, pixelHeight);
+    functions->glScissor(0, 0, leftWidth, pixelHeight);
     functions->glEnable(GL_SCISSOR_TEST);
     functions->glClearColor(0.11f, 0.12f, 0.14f, 1.0f);
     functions->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     m_renderer.draw(m_assembly, m_package, m_style, m_side.view(),
                     m_side.projection(float(leftWidth) / float(qMax(1, height()))));
 
-    functions->glViewport(splitX, 0, rightWidth, height());
-    functions->glScissor(splitX, 0, rightWidth, height());
+    functions->glViewport(splitX, 0, rightWidth, pixelHeight);
+    functions->glScissor(splitX, 0, rightWidth, pixelHeight);
     functions->glClearColor(0.09f, 0.10f, 0.12f, 1.0f);
     functions->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     m_renderer.draw(m_assembly, m_package, m_style, m_orbit.view(),

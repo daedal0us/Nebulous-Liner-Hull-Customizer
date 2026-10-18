@@ -387,7 +387,7 @@ def write_png(path, width, height, channels, data):
 
 def read_png_size(path):
     with open(path, "rb") as handle:
-        head = handle.read(24)
+        head = handle.read(33)
     if head[:8] != b"\x89PNG\r\n\x1a\n":
         raise TextureError("not a PNG: %r" % (path,))
     width, height, depth, color_type = struct.unpack_from(">IIBB", head, 16)

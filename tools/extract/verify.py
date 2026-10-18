@@ -102,21 +102,21 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                  sorted(hulls) == sorted(HULL_IDS), ", ".join(sorted(hulls)))
 
     # --- documented key / dressing table --------------------------------
-    hits = 0
-    expected = 0
+    rows = 0
+    found = set()
+    missing = []
     wrong = []
     for hull_id in HULL_IDS:
         hull = hulls.get(hull_id, {})
         for group, table in (("bows", DOC_BOWS), ("cores", DOC_CORES),
                              ("sterns", DOC_STERNS)):
-            candidates = hull.get(group, [])
-            candidate_keys = [pid.split(":")[1] for pid in candidates]
+            candidate_keys = [pid.split(":")[1] for pid in hull.get(group, [])]
             for prefix, documented in table[hull_id]:
-                expected += 1
+                rows += 1
                 if prefix not in candidate_keys:
-                    wrong.append("%s %s %s missing" % (hull_id, group, prefix))
+                    missing.append("%s %s %s" % (hull_id, group, prefix))
                     continue
-                hits += 1
+                found.add(prefix)
                 piece = by_key.get(prefix)
                 own = len(piece["dressingPoints"]) if piece else -1
                 if group in ("bows", "sterns"):
@@ -126,10 +126,13 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                 elif own > documented:
                     wrong.append("%s %s own=%d > doc=%d"
                                  % (prefix, group, own, documented))
-    report.check("documented keys found (18 unique)", hits == expected,
-                 "%d/%d unique keys" % (hits, expected))
+    report.check("documented keys found (18 unique)", not missing
+                 and len(found) == 18,
+                 "%d/18 unique keys in %d table rows%s"
+                 % (len(found), rows,
+                    "" if not missing else "; missing " + ", ".join(missing[:3])))
     report.check("documented dressing counts reproduced", not wrong,
-                 "; ".join(wrong[:4]) if wrong else "18/18 rows")
+                 "; ".join(wrong[:4]) if wrong else "%d/%d rows" % (rows, rows))
 
     # --- sample fleets: exact dressing array lengths ---------------------
     ships = read_fleets(samples)
@@ -225,8 +228,12 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
     mesh_bad = []
     no_uv = 0
     total_vertices = 0
+    seen_meshes = set()
     for piece in pieces.values():
         for mesh_id in piece["meshIds"]:
+            if mesh_id in seen_meshes:
+                continue
+            seen_meshes.add(mesh_id)
             path = os.path.join(out_dir, "mesh", mesh_id.split(":")[1] + ".nlmesh")
             if not os.path.exists(path):
                 mesh_bad.append("%s missing" % mesh_id)
@@ -273,10 +280,11 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
             if width <= 0 or height <= 0 or depth != 8:
                 missing_files.append("%s %dx%d depth %d"
                                      % (relative, width, height, depth))
+    png_files = len([m for m in materials if m["mask"]]) + len(with_albedo)
     report.check("mask/albedo PNGs exist and are 8 bit",
                  not missing_files,
                  "; ".join(missing_files[:3]) if missing_files else
-                 "%d files" % (len(materials) * 2))
+                 "%d files, %d materials" % (png_files, len(materials)))
 
     # --- volume ----------------------------------------------------------
     total = 0

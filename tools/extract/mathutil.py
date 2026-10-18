@@ -66,6 +66,23 @@ def transform_normal(rotation, scale, normal):
     return (rotated[0] / length, rotated[1] / length, rotated[2] / length)
 
 
+def compose_trs(parent_position, parent_rotation, parent_scale,
+                local_position, local_rotation, local_scale):
+    """Unity TRS composition: parent * local."""
+    scaled = (local_position[0] * parent_scale[0],
+              local_position[1] * parent_scale[1],
+              local_position[2] * parent_scale[2])
+    rotated = quat_rotate(parent_rotation, scaled)
+    position = (parent_position[0] + rotated[0],
+                parent_position[1] + rotated[1],
+                parent_position[2] + rotated[2])
+    rotation = quat_mul(parent_rotation, local_rotation)
+    scale = (parent_scale[0] * local_scale[0],
+             parent_scale[1] * local_scale[1],
+             parent_scale[2] * local_scale[2])
+    return position, rotation, scale
+
+
 def matrix_of(position, rotation, scale):
     """Row major 4x4 as nested tuples, for debugging / tests."""
     x, y, z, w = rotation

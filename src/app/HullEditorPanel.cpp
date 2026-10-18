@@ -124,9 +124,17 @@ void HullEditorPanel::setEditable(bool editable)
 
 const Piece *HullEditorPanel::pieceForSegment(int segment) const
 {
-    if (!m_package || segment < 0 || segment >= 3)
+    if (!m_package || !m_hullType || segment < 0 || segment >= 3)
         return nullptr;
-    return m_package->piece(m_config.primary[segment].key);
+    const QStringList &ids = segment == 0 ? m_hullType->bows
+        : (segment == 1 ? m_hullType->cores : m_hullType->sterns);
+    const QString &key = m_config.primary[segment].key;
+    for (const QString &id : ids) {
+        const Piece *piece = m_package->piece(id);
+        if (piece && piece->key.compare(key, Qt::CaseInsensitive) == 0)
+            return piece;
+    }
+    return nullptr;
 }
 
 void HullEditorPanel::rebuildSegments()
@@ -146,7 +154,7 @@ void HullEditorPanel::rebuildSegments()
             const Piece *piece = m_package->piece(id);
             const QString label = piece ? QStringLiteral("%1  [%2]").arg(piece->debugName, piece->key.left(8))
                                         : id;
-            box->addItem(label, id);
+            box->addItem(label, piece ? piece->key : id);
         }
         box->setEnabled(m_editable);
     }
@@ -238,7 +246,7 @@ void HullEditorPanel::rebuildSecondary()
         pieceBox->setMinimumContentsLength(10);
         for (const QString &id : m_hullType->superstructures) {
             const Piece *piece = m_package->piece(id);
-            pieceBox->addItem(piece ? piece->debugName : id, id);
+            pieceBox->addItem(piece ? piece->debugName : id, piece ? piece->key : id);
         }
         auto *segmentBox = new QComboBox(row);
         for (int segment = 0; segment < 3; ++segment)

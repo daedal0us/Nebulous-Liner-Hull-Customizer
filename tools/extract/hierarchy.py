@@ -210,44 +210,104 @@ class SceneGraph(object):
         return self.container().get(container_path.lower(), 0)
 
 
-def world_transform(graph, go, cache=None):
-    """Section space position/quaternion/scale of a GameObject."""
-    if cache is not None and go in cache:
-        return cache[go]
+def world_transform_of_transform(graph, transform, cache=None):
+    """File space (position, rotation, scale) of a Transform pathID."""
+    if cache is not None and transform in cache:
+        return cache[transform]
     chain = []
-    current = go
-    while current:
+    current = transform
+    guard = 0
+    while current and guard < 512:
         chain.append(current)
-        current = graph.parent_of(current)
+        current = graph.tr_father.get(current, 0)
+        guard += 1
     position = (0.0, 0.0, 0.0)
     rotation = (0.0, 0.0, 0.0, 1.0)
     scale = (1.0, 1.0, 1.0)
-    for game_object in reversed(chain):
-        local_position, local_rotation, local_scale = graph.local_transform(game_object)
-        position, rotation, scale = _compose(position, rotation, scale,
-                                             local_position, local_rotation,
-                                             local_scale)
+    from . import mathutil
+    for item in reversed(chain):
+        local = graph.tr_local.get(item)
+        if local is None:
+            continue
+        position, rotation, scale = mathutil.compose_trs(
+            position, rotation, scale, local[0], local[1], local[2])
     result = (position, rotation, scale)
     if cache is not None:
-        cache[go] = result
+        cache[transform] = result
     return result
 
 
-def _compose(parent_position, parent_rotation, parent_scale,
-             local_position, local_rotation, local_scale):
-    from . import mathutil
-    scaled = (local_position[0] * parent_scale[0],
-              local_position[1] * parent_scale[1],
-              local_position[2] * parent_scale[2])
-    rotated = mathutil.quat_rotate(parent_rotation, scaled)
-    position = (parent_position[0] + rotated[0],
-                parent_position[1] + rotated[1],
-                parent_position[2] + rotated[2])
-    rotation = mathutil.quat_mul(parent_rotation, local_rotation)
-    scale = (parent_scale[0] * local_scale[0],
-             parent_scale[1] * local_scale[1],
-             parent_scale[2] * local_scale[2])
-    return position, rotation, scale
+def world_transform(graph, go, cache=None):
+    """File space transform of a GameObject (section space before localising)."""
+    transform = graph.transform_of_go.get(go)
+    if transform is None:
+        return ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), (1.0, 1.0, 1.0))
+    return world_transform_of_transform(graph, transform, cache)
+
+
+class SectionSpace(object):
+    """Converts file space transforms into the space of one section root."""
+
+    def __init__(self, graph, root_go):
+        from . import mathutil
+        transform = graph.transform_of_go.get(root_go)
+        if transform is None:
+            self.translation = (0.0, 0.0, 0.0)
+            self.rotation = (0.0, 0.0, 0.0, 1.0)
+            self.scale = (1.0, 1.0, 1.0)
+        else:
+            self.translation, self.rotation, self.scale = \
+                world_transform_of_transform(graph, transform)
+        self.inverse_rotation = mathutil.quat_normalize(
+            mathutil.quat_conjugate(self.rotation))
+        self._math = mathutil
+
+    def localise(self, position, rotation, scale):
+        mathutil = self._math
+        inverse_scale = (1.0 / self.scale[0] if self.scale[0] else 0.0,
+                         1.0 / self.scale[1] if self.scale[1] else 0.0,
+                         1.0 / self.scale[2] if self.scale[2] else 0.0)
+        delta = ((position[0] - self.translation[0]) * inverse_scale[0],
+                 (position[1] - self.translation[1]) * inverse_scale[1],
+                 (position[2] - self.translation[2]) * inverse_scale[2])
+        local_position = mathutil.quat_rotate(self.inverse_rotation, delta)
+        local_rotation = mathutil.quat_normalize(
+            mathutil.quat_mul(self.inverse_rotation, rotation))
+        local_scale = (scale[0] * inverse_scale[0],
+                       scale[1] * inverse_scale[1],
+                       scale[2] * inverse_scale[2])
+        return local_position, local_rotation, local_scale
+
+    def transform_of_game_object(self, graph, go, cache=None):
+        return self.localise(*world_transform(graph, go, cache))
+
+    def transform_of_snap(self, graph, path_id, cache=None):
+        """Snap points are PPtr<Transform>, not PPtr<GameObject>."""
+        info = graph.sf.by_path.get(path_id)
+        if info is None:
+            return None
+        if info.class_id in (CLASS_TRANSFORM, CLASS_RECTTRANSFORM):
+            return self.localise(*world_transform_of_transform(graph, path_id,
+                                                               cache))
+        return self.localise(*world_transform(graph, path_id, cache))
+
+
+def resolve_snaps(graph, section, space=None):
+    """Fill in section space snap transforms (relative to the section root)."""
+    space = space or SectionSpace(graph, section.root_go)
+    cache = {}
+    if section.fore_snap_go:
+        section.fore_snap = space.transform_of_snap(graph, section.fore_snap_go,
+                                                    cache)[:2]
+    if section.aft_snap_go:
+        section.aft_snap = space.transform_of_snap(graph, section.aft_snap_go,
+                                                   cache)[:2]
+    section.superstructure_snaps = []
+    for snap in section.superstructure_snap_gos:
+        value = space.transform_of_snap(graph, snap, cache)
+        if value is not None:
+            section.superstructure_snaps.append(value[:2])
+    return section
 
 
 class DressingPoint(object):
@@ -284,7 +344,9 @@ class Section(object):
 
     @property
     def id(self):
-        return "p:" + self.key.split("-")[0][:8] if self.key else "p:?"
+        if not self.key:
+            return "p:?"
+        return "p:" + self.key.split("-")[0][:8]
 
     def __repr__(self):
         return "Section(%s %s %r %d dressing points)" % (
@@ -292,7 +354,8 @@ class Section(object):
 
 
 class HullType(object):
-    def __init__(self, save_key, role, display_name, prefab_path, root_go, component):
+    def __init__(self, save_key, role, display_name, prefab_path, root_go,
+                 component):
         self.save_key = save_key
         self.role = role
         self.display_name = display_name
@@ -319,11 +382,9 @@ def section_from_component(graph, component):
     script = graph.component_class.get(component, "")
     root_go = pptr_path_id(value.get("m_GameObject"))
     if script == "ModularHullSecondaryStructure":
-        section = Section(root_go, "superstructure", value.get("_key", ""),
-                          _prefab_name(graph, root_go), component)
-        return section
-    kind = _kind_of(graph, root_go)
-    section = Section(root_go, kind, value.get("_key", ""),
+        return Section(root_go, "superstructure", value.get("_key", ""),
+                       _prefab_name(graph, root_go), component)
+    section = Section(root_go, _kind_of(graph, root_go), value.get("_key", ""),
                       _prefab_name(graph, root_go), component)
     section.fore_snap_go = pptr_path_id(value.get("_foreSnapPoint"))
     section.aft_snap_go = pptr_path_id(value.get("_aftSnapPoint"))
@@ -355,26 +416,11 @@ def dressing_points(graph, root_go):
 def all_sections(graph):
     """Every primary and secondary structure component in the file."""
     sections = []
-    for component, script in sorted(graph.component_class.items()):
-        if script in ("ModularHullPrimaryStructure",
-                      "ModularHullSecondaryStructure"):
+    for component in sorted(graph.component_class):
+        if graph.component_class[component] in ("ModularHullPrimaryStructure",
+                                                "ModularHullSecondaryStructure"):
             sections.append(section_from_component(graph, component))
     return sections
-
-
-def resolve_snaps(graph, section):
-    """Fill in section space snap transforms (relative to the section root)."""
-    if section.fore_snap_go:
-        position, rotation, _ = world_transform(graph, section.fore_snap_go)
-        section.fore_snap = (position, rotation)
-    if section.aft_snap_go:
-        position, rotation, _ = world_transform(graph, section.aft_snap_go)
-        section.aft_snap = (position, rotation)
-    section.superstructure_snaps = []
-    for snap_go in section.superstructure_snap_gos:
-        position, rotation, _ = world_transform(graph, snap_go)
-        section.superstructure_snaps.append((position, rotation))
-    return section
 
 
 def load_hull_types(graph):
@@ -394,9 +440,8 @@ def load_hull_types(graph):
         for attribute, field in (("bows", "_bows"), ("cores", "_cores"),
                                  ("sterns", "_sterns"),
                                  ("superstructures", "_superstructures")):
-            sections = []
-            for path_id in pptr_list(value.get(field)):
-                sections.append(section_from_component(graph, path_id))
+            sections = [section_from_component(graph, path_id)
+                        for path_id in pptr_list(value.get(field))]
             sections.sort(key=lambda s: s.key)
             setattr(hull, attribute, sections)
         result[save_key] = hull
