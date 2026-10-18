@@ -4,3 +4,4 @@
 /.cache
 *.user
 *.autosave
+__pycache__/
