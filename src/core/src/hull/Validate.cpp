@@ -35,7 +35,7 @@ const Piece *primaryPiece(const HullPackage &package, const HullTypeDef &type, i
 {
     if (segment < 0 || segment >= RandomHullConfig::SegmentCount)
         return nullptr;
-    return detail::findPieceByKey(package, detail::segmentPieceIds(type, segment), key);
+    return detail::findPieceByKey(package, type, detail::segmentPieceIds(type, segment), key);
 }
 
 } // namespace
@@ -96,7 +96,7 @@ QVector<Diagnostic> checkConfig(const HullPackage &package, const QString &hullT
     }
 
     for (const SecondaryConfig &entry : config.secondary) {
-        const Piece *piece = detail::findPieceByKey(package, type->superstructures, entry.key);
+        const Piece *piece = detail::findPieceByKey(package, *type, type->superstructures, entry.key);
         if (!piece) {
             diagnostics.append(make(Severity::Error, diag::UnknownSecondary,
                                     entry.key.isEmpty() ? QStringLiteral("no key") : entry.key));
@@ -138,7 +138,7 @@ bool repairConfig(const HullPackage &package, const QString &hullTypeId, RandomH
         const Piece *piece = primaryPiece(package, *type, segment, segmentConfig.key);
         if (!piece) {
             const QVector<const Piece *> candidates =
-                detail::candidatePieces(package, detail::segmentPieceIds(*type, segment));
+                detail::candidatePieces(package, *type, detail::segmentPieceIds(*type, segment));
             if (candidates.isEmpty())
                 continue;
             piece = candidates.first();
@@ -194,7 +194,7 @@ bool repairConfig(const HullPackage &package, const QString &hullTypeId, RandomH
     QVector<SecondaryConfig> kept;
     kept.reserve(config->secondary.size());
     for (SecondaryConfig entry : std::as_const(config->secondary)) {
-        const Piece *piece = detail::findPieceByKey(package, type->superstructures, entry.key);
+        const Piece *piece = detail::findPieceByKey(package, *type, type->superstructures, entry.key);
         if (!piece) { // the game drops unknown superstructures: do the same
             changed = true;
             continue;
@@ -209,7 +209,8 @@ bool repairConfig(const HullPackage &package, const QString &hullTypeId, RandomH
             changed = true;
         }
         const Piece *segmentPiece = detail::findPieceByKey(
-            package, detail::segmentPieceIds(*type, entry.segment), config->primary[size_t(entry.segment)].key);
+            package, *type, detail::segmentPieceIds(*type, entry.segment),
+            config->primary[size_t(entry.segment)].key);
         const int snapCount = segmentPiece ? segmentPiece->superstructureSnaps.size() : 0;
         if (snapCount == 0) { // no mount point left: the entry cannot be loaded
             changed = true;
@@ -243,7 +244,7 @@ RandomHullConfig randomizeConfig(const HullPackage &package, const QString &hull
     for (int segment = 0; segment < RandomHullConfig::SegmentCount; ++segment) {
         SegmentConfig &segmentConfig = config.primary[size_t(segment)];
         const QVector<const Piece *> candidates =
-            detail::candidatePieces(package, detail::segmentPieceIds(*type, segment));
+            detail::candidatePieces(package, *type, detail::segmentPieceIds(*type, segment));
         if (candidates.isEmpty())
             continue;
         const Piece *piece = candidates.at(int(rng.bounded(int(candidates.size()))));
@@ -282,7 +283,7 @@ RandomHullConfig randomizeConfig(const HullPackage &package, const QString &hull
         if (piece && !piece->superstructureSnaps.isEmpty())
             mountable.append(segment);
     }
-    const QVector<const Piece *> secondaries = detail::candidatePieces(package, type->superstructures);
+    const QVector<const Piece *> secondaries = detail::candidatePieces(package, *type, type->superstructures);
     if (!secondaries.isEmpty() && !mountable.isEmpty()) {
         SecondaryConfig entry;
         entry.key = secondaries.at(int(rng.bounded(int(secondaries.size()))))->key;

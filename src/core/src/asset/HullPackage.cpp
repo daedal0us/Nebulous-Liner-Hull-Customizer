@@ -238,6 +238,7 @@ bool HullPackage::load(const QString &rootDir, QString *error)
     };
 
     d = std::make_unique<Impl>();
+    m_pieceOverrides.clear();
     d->rootDir = QDir(rootDir).absolutePath();
 
     const QString catalogPath = QDir(d->rootDir).filePath(QStringLiteral("catalog.json"));
@@ -417,6 +418,44 @@ bool HullPackage::load(const QString &rootDir, QString *error)
         }
     }
 
+    // nodeMaterials is resolved after pieces and materials so it can be validated.
+    for (int i = 0; i < hullTypes.size(); ++i) {
+        const QJsonObject nodeMaterials =
+            hullTypes.at(i).toObject().value(QLatin1String("nodeMaterials")).toObject();
+        if (nodeMaterials.isEmpty())
+            continue;
+        HullTypeDef &def = d->hullTypes[i];
+        for (auto pieceIt = nodeMaterials.begin(); pieceIt != nodeMaterials.end(); ++pieceIt) {
+            if (!d->pieceIndex.contains(pieceIt.key())) {
+                d->warnings.append(QStringLiteral("catalog.json: hull type %1 overrides unknown piece %2")
+                                       .arg(quote(def.id), quote(pieceIt.key())));
+                continue;
+            }
+            const QJsonObject nodes = pieceIt.value().toObject();
+            QHash<int, QString> overrides;
+            for (auto nodeIt = nodes.begin(); nodeIt != nodes.end(); ++nodeIt) {
+                bool ok = false;
+                const int index = nodeIt.key().toInt(&ok);
+                if (!ok) {
+                    d->warnings.append(QStringLiteral("catalog.json: hull type %1: node key %2 is not an index")
+                                           .arg(quote(def.id), quote(nodeIt.key())));
+                    continue;
+                }
+                const QString materialId = nodeIt.value().toString();
+                if (!d->materialIndex.contains(materialId)) {
+                    d->warnings.append(QStringLiteral("catalog.json: hull type %1 overrides node %2 with unknown material %3")
+                                           .arg(quote(def.id))
+                                           .arg(index)
+                                           .arg(quote(materialId)));
+                    continue;
+                }
+                overrides.insert(index, materialId);
+            }
+            if (!overrides.isEmpty())
+                def.nodeMaterials.insert(pieceIt.key(), overrides);
+        }
+    }
+
     d->valid = true;
     return true;
 }
@@ -460,6 +499,28 @@ const Piece *HullPackage::piece(const QString &id) const
     if (it == d->pieceIndex.cend())
         return nullptr;
     return &d->pieces.at(it.value());
+}
+
+const Piece *HullPackage::pieceFor(const HullTypeDef &hullType, const QString &id) const
+{
+    const Piece *base = piece(id);
+    if (!base)
+        return nullptr;
+    const auto found = hullType.nodeMaterials.constFind(id);
+    if (found == hullType.nodeMaterials.cend() || found.value().isEmpty())
+        return base;
+
+    const QString cacheKey = hullType.id + QLatin1Char('\n') + id;
+    const auto cached = m_pieceOverrides.constFind(cacheKey);
+    if (cached != m_pieceOverrides.cend())
+        return &cached.value();
+
+    Piece copy = *base;
+    for (auto it = found.value().cbegin(); it != found.value().cend(); ++it) {
+        if (it.key() >= 0 && it.key() < copy.nodes.size())
+            copy.nodes[it.key()].materialId = it.value();
+    }
+    return &m_pieceOverrides.insert(cacheKey, copy).value();
 }
 
 const MaterialDef *HullPackage::material(const QString &id) const

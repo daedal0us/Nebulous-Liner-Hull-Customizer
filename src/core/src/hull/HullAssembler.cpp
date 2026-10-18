@@ -148,7 +148,7 @@ AssemblyResult HullAssembler::assemble(const HullPackage &package, const QString
     const Piece *segments[RandomHullConfig::SegmentCount] = {nullptr, nullptr, nullptr};
     for (int i = 0; i < RandomHullConfig::SegmentCount; ++i) {
         const QString &key = config.primary[size_t(i)].key;
-        segments[i] = detail::findPieceByKey(package, detail::segmentPieceIds(*type, i), key);
+        segments[i] = detail::findPieceByKey(package, *type, detail::segmentPieceIds(*type, i), key);
         if (!segments[i])
             result.diagnostics.append(makeDiagnostic(Severity::Error, diag::UnknownSegment,
                                                      key.isEmpty() ? QStringLiteral("no key") : key, i));
@@ -233,7 +233,7 @@ AssemblyResult HullAssembler::assemble(const HullPackage &package, const QString
 
     // Secondary structures hang off a segment snap point; localPosition is 0.
     for (const SecondaryConfig &entry : config.secondary) {
-        const Piece *secondary = detail::findPieceByKey(package, type->superstructures, entry.key);
+        const Piece *secondary = detail::findPieceByKey(package, *type, type->superstructures, entry.key);
         if (!secondary) {
             result.diagnostics.append(
                 makeDiagnostic(Severity::Error, diag::UnknownSecondary,

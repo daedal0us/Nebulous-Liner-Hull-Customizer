@@ -68,6 +68,7 @@ private slots:
     void honoursAllowEmptyDressing();
     void mountsSuperstructureOnSnap();
     void reportsSuperstructureOutOfRange();
+    void appliesHullTypeMaterialOverrides();
 
 private:
     const MeshData *mesh(const char *id) const { return m_package.mesh(QString::fromLatin1(id), nullptr); }
@@ -278,6 +279,35 @@ void TstAssembler::reportsSuperstructureOutOfRange()
     QCOMPARE(countCode(result.diagnostics, diag::SecondarySegmentOutOfRange), 1);
     QCOMPARE(countCode(result.diagnostics, diag::SecondarySnapOutOfRange), 1);
     QCOMPARE(countCode(result.diagnostics, diag::UnknownSecondary), 1);
+}
+
+// A mesh shared by two hull types must paint with each hull type's own material.
+void TstAssembler::appliesHullTypeMaterialOverrides()
+{
+    RandomHullConfig config;
+    config.primary[0].key = test::keyDressingBow();
+    config.primary[1].key = test::keyDressingCore();
+    config.primary[2].key = test::keyStern();
+
+    const AssemblyResult overridden = m_assembler.assemble(m_package, QStringLiteral("Test/Dressing"), config);
+    const AssemblyResult plain = m_assembler.assemble(m_package, QStringLiteral("Stock/Bulk Hauler"), config);
+
+    bool sawFixed = false;
+    for (const DrawItem &item : overridden.items) {
+        if (item.material && item.material->id == QLatin1String("t:fixed"))
+            sawFixed = true;
+    }
+    QVERIFY2(sawFixed, "the hull type override never reached the assembly");
+
+    for (const DrawItem &item : plain.items) {
+        if (item.material)
+            QVERIFY2(item.material->id != QLatin1String("t:fixed"),
+                     "a hull type without an override picked up another type's material");
+    }
+    // The canonical piece stays untouched.
+    const Piece *piece = m_package.piece(QStringLiteral("pd:bow"));
+    QVERIFY(piece);
+    QCOMPARE(piece->nodes.at(0).materialId, QStringLiteral("t:paint"));
 }
 
 void TstAssembler::cleanupTestCase()

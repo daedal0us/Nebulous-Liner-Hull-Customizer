@@ -82,6 +82,10 @@ struct HullTypeDef
     QStringList cores;
     QStringList sterns;
     QStringList superstructures;
+    // piece id -> (node index -> material id). A shared piece can bind different materials per
+    // hull type: the game stores the material on the hull type's segment instance, not on the
+    // piece asset, so Bulk Hauler and Container Hauler reuse one mesh with different paint.
+    QHash<QString, QHash<int, QString>> nodeMaterials;
 };
 
 } // namespace nlhc

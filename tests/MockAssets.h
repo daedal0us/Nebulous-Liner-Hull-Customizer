@@ -335,6 +335,15 @@ inline QString createMockPackage(const QString &rootDir)
         materials.append(material);
     }
 
+    {
+        QJsonObject material;
+        material[QStringLiteral("id")] = QStringLiteral("t:fixed");
+        material[QStringLiteral("paintable")] = false;
+        material[QStringLiteral("materialRole")] = QStringLiteral("fixed");
+        material[QStringLiteral("baseColor")] = vec3(0.83f, 0.73f, 0.64f);
+        materials.append(material);
+    }
+
     QJsonArray hullTypes;
     {
         QJsonObject hullType;
@@ -359,6 +368,12 @@ inline QString createMockPackage(const QString &rootDir)
         hullType[QStringLiteral("cores")] = QJsonArray{QStringLiteral("pd:core")};
         hullType[QStringLiteral("sterns")] = QJsonArray{QStringLiteral("p:stern")};
         hullType[QStringLiteral("superstructures")] = QJsonArray{QStringLiteral("p:sup")};
+        // The same piece mesh painted differently by this hull type than by Stock/Bulk Hauler.
+        QJsonObject rebind;
+        rebind[QStringLiteral("1")] = QStringLiteral("t:fixed");
+        QJsonObject overrides;
+        overrides[QStringLiteral("pd:bow")] = rebind;
+        hullType[QStringLiteral("nodeMaterials")] = overrides;
         hullTypes.append(hullType);
     }
     {

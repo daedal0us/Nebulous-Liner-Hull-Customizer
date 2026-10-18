@@ -31,6 +31,8 @@ public:
 
     const HullTypeDef *hullType(const QString &id) const;
     const Piece *piece(const QString &id) const;
+    // piece() with the hull type's node material overrides applied (cached per type + piece).
+    const Piece *pieceFor(const HullTypeDef &hullType, const QString &id) const;
     const MaterialDef *material(const QString &id) const;
     const MeshData *mesh(const QString &id, QString *error) const;
     QImage texture(const QString &relativePath, QString *error) const;
@@ -40,6 +42,7 @@ public:
 
 private:
     struct Impl;
+    mutable QHash<QString, Piece> m_pieceOverrides;
     std::unique_ptr<Impl> d;
 };
 

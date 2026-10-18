@@ -20,13 +20,15 @@ inline const QStringList &segmentPieceIds(const HullTypeDef &type, int segment)
     }
 }
 
-// catalog piece ids referenced by a hull type, resolved to real pieces (order kept).
-inline QVector<const Piece *> candidatePieces(const HullPackage &package, const QStringList &ids)
+// catalog piece ids referenced by a hull type, resolved to real pieces (order kept). The pieces
+// carry the hull type's material overrides, so a mesh shared by two hull types paints correctly.
+inline QVector<const Piece *> candidatePieces(const HullPackage &package, const HullTypeDef &type,
+                                              const QStringList &ids)
 {
     QVector<const Piece *> pieces;
     pieces.reserve(ids.size());
     for (const QString &id : ids) {
-        const Piece *piece = package.piece(id);
+        const Piece *piece = package.pieceFor(type, id);
         if (piece && !pieces.contains(piece))
             pieces.append(piece);
     }
@@ -35,11 +37,12 @@ inline QVector<const Piece *> candidatePieces(const HullPackage &package, const 
 
 // A .fleet stores piece keys (GUIDs); catalog hull types list piece ids. Also tolerates
 // catalogs that list keys directly.
-inline const Piece *findPieceByKey(const HullPackage &package, const QStringList &ids, const QString &key)
+inline const Piece *findPieceByKey(const HullPackage &package, const HullTypeDef &type, const QStringList &ids,
+                                   const QString &key)
 {
     if (key.isEmpty())
         return nullptr;
-    const QVector<const Piece *> candidates = candidatePieces(package, ids);
+    const QVector<const Piece *> candidates = candidatePieces(package, type, ids);
     for (const Piece *piece : candidates) {
         if (piece->key.compare(key, Qt::CaseInsensitive) == 0 || piece->id.compare(key, Qt::CaseInsensitive) == 0)
             return piece;

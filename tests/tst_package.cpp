@@ -33,6 +33,7 @@ private slots:
     void reportsUnsupportedMeshVersion();
     void reportsMissingTexture();
     void collectsWarnings();
+    void appliesNodeMaterialOverrides();
 
 private:
     QString mockRoot() const { return m_dir.filePath(QStringLiteral("package")); }
@@ -62,7 +63,7 @@ void TstPackage::loadsMockCatalog()
     QVERIFY(package.isValid());
     QCOMPARE(package.hullTypes().size(), qsizetype(3));
     QCOMPARE(package.pieces().size(), qsizetype(6));
-    QCOMPARE(package.materials().size(), qsizetype(1));
+    QCOMPARE(package.materials().size(), qsizetype(2));
     QCOMPARE(QDir(package.rootDir()), QDir(mockRoot()));
 }
 
@@ -291,6 +292,27 @@ void TstPackage::collectsWarnings()
             found = true;
     }
     QVERIFY2(found, qPrintable(warnings.join(QStringLiteral("; "))));
+}
+
+void TstPackage::appliesNodeMaterialOverrides()
+{
+    HullPackage package;
+    QVERIFY(package.load(mockRoot(), nullptr));
+    const HullTypeDef *dressing = package.hullType(QStringLiteral("Test/Dressing"));
+    const HullTypeDef *bulk = package.hullType(QStringLiteral("Stock/Bulk Hauler"));
+    QVERIFY(dressing);
+    QVERIFY(bulk);
+
+    const Piece *shared = package.pieceFor(*dressing, QStringLiteral("pd:bow"));
+    QVERIFY(shared);
+    QCOMPARE(shared->nodes.at(1).materialId, QStringLiteral("t:fixed"));
+    // The remaining nodes keep the catalog values.
+    QCOMPARE(shared->nodes.at(0).materialId, QStringLiteral("t:paint"));
+
+    // Another hull type resolves the same piece without the override, and the canonical entry
+    // in the package is never mutated.
+    QCOMPARE(package.pieceFor(*bulk, QStringLiteral("pd:bow")), package.piece(QStringLiteral("pd:bow")));
+    QCOMPARE(package.piece(QStringLiteral("pd:bow"))->nodes.at(1).materialId, QStringLiteral("t:paint"));
 }
 
 void TstPackage::cleanupTestCase()
