@@ -31,6 +31,9 @@ public:
     void resetViews();
     QImage grabImage();
 
+    void setDebugView(HullRenderer::DebugView view);
+    QString debugLegend() const;
+
 protected:
     void initializeGL() override;
     void paintGL() override;

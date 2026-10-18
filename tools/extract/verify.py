@@ -553,13 +553,24 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                 polarity_bad.append(material["id"] + " placeholder inverted")
         elif material["maskChannel"] != "r":
             polarity_bad.append(material["id"] + " channel")
-        elif ("civbulk" in (names.get(material["id"]) or "").lower()
-                or "marauder" in (names.get(material["id"]) or "").lower()):
-            # Marauder masks are authored white-where-band, so trim uses the raw value.
-            if material["maskInvert"]:
-                polarity_bad.append(material["id"] + " marauder inverted")
-        elif not material["maskInvert"] and material.get("maskMode") != "keep":
-            polarity_bad.append(material["id"] + " unpolarised")
+        elif not material["maskInvert"]:
+            # A trim mask is authored white where the BASE paint applies, so the trim weight is
+            # (1 - mask). A sheet that skips the inversion floods the hull with the trim colour.
+            polarity_bad.append(material["id"] + " not inverted")
+    bare_bad = []
+    bare_ok = 0
+    for material in materials:
+        if not material.get("bareMask"):
+            continue
+        bare_ok += 1
+        owner = (names.get(material["id"]) or "").lower()
+        if "civbulk" not in owner and "marauder" not in owner:
+            bare_bad.append(material["id"])
+    report.check("bare panels are exported for the marauder plating only",
+                 bare_ok > 0 and not bare_bad,
+                 "%d bare maps%s" % (bare_ok, "" if not bare_bad
+                                     else "; unexpected " + ", ".join(bare_bad[:3])))
+
     report.check("mask polarity follows the authoring convention per family",
                  not polarity_bad,
                  "%d masks, channel/polarity %s"

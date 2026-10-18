@@ -61,16 +61,21 @@ int main(int argc, char *argv[])
     if (!shipIndex.isEmpty())
         window.selectShipByIndex(shipIndex.toInt());
 
+    const QString debugView = argumentValue(args, QStringLiteral("--debug-view"));
+    if (!debugView.isEmpty())
+        window.setDebugViewName(debugView);
+
     const QString screenshot = argumentValue(args, QStringLiteral("--screenshot"));
     if (!screenshot.isEmpty()) {
         QTimer::singleShot(600, &app, [&window, screenshot] {
             const bool saved = window.grab().save(screenshot);
             QFile log(screenshot + QStringLiteral(".log"));
             if (log.open(QIODevice::WriteOnly | QIODevice::Truncate))
-                log.write(QStringLiteral("%1 %2\n%3\n")
+                log.write(QStringLiteral("%1 %2\n%3\n%4")
                               .arg(saved ? QStringLiteral("ok") : QStringLiteral("grab failed"),
                                    window.debugLayoutSummary(),
-                                   window.debugAssemblySummary())
+                                   window.debugAssemblySummary(),
+                                   window.debugRenderLegend())
                               .toUtf8());
             QCoreApplication::quit();
         });

@@ -181,6 +181,17 @@ void HullViewport::wheelEvent(QWheelEvent *event)
     event->accept();
 }
 
+void HullViewport::setDebugView(HullRenderer::DebugView view)
+{
+    m_renderer.setDebugView(view);
+    update();
+}
+
+QString HullViewport::debugLegend() const
+{
+    return m_renderer.debugLegend();
+}
+
 QImage HullViewport::grabImage()
 {
     return grabFramebuffer();

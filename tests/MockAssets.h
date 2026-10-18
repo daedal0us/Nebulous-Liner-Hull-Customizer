@@ -332,6 +332,7 @@ inline QString createMockPackage(const QString &rootDir)
         material[QStringLiteral("maskChannel")] = QStringLiteral("r");
         material[QStringLiteral("maskInvert")] = false;
         material[QStringLiteral("trimBaked")] = false;
+        material[QStringLiteral("bareMask")] = QStringLiteral("bare/paint.png");
         materials.append(material);
     }
 

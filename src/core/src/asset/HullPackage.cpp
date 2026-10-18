@@ -324,6 +324,7 @@ bool HullPackage::load(const QString &rootDir, QString *error)
                                    .arg(context, quote(def.maskMode)));
             def.maskMode = QStringLiteral("trim");
         }
+        def.bareMaskPath = object.value(QLatin1String("bareMask")).toString();
         def.metallic = float(object.value(QLatin1String("metallic")).toDouble(0.0));
         def.smoothness = float(object.value(QLatin1String("smoothness")).toDouble(0.5));
         def.trimBaked = object.value(QLatin1String("trimBaked")).toBool(false);

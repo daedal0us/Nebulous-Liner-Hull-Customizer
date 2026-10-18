@@ -386,6 +386,30 @@ def _interleave(red, green, blue):
     return values
 
 
+def _box_mean(values, width, height, radius):
+    """Mean of a square window clamped at the borders, in one pass over an integral image."""
+    integral = [0] * ((width + 1) * (height + 1))
+    for y in range(height):
+        run = 0
+        row = y * width
+        out = (y + 1) * (width + 1)
+        prev = y * (width + 1)
+        for x in range(width):
+            run += values[row + x]
+            integral[out + x + 1] = integral[prev + x + 1] + run
+    result = [0.0] * (width * height)
+    for y in range(height):
+        y0 = max(y - radius, 0)
+        y1 = min(y + radius + 1, height)
+        for x in range(width):
+            x0 = max(x - radius, 0)
+            x1 = min(x + radius + 1, width)
+            total = (integral[y1 * (width + 1) + x1] - integral[y0 * (width + 1) + x1]
+                     - integral[y1 * (width + 1) + x0] + integral[y0 * (width + 1) + x0])
+            result[y * width + x] = total / float((y1 - y0) * (x1 - x0))
+    return result
+
+
 def _interleave_rgba(red, green, blue, alpha):
     """Pack four channels into one RGBA payload."""
     values = bytearray(len(red) * 4)
@@ -586,12 +610,8 @@ class MaterialBuilder(object):
         if albedo and mask:
             definition["maskMode"] = self._mask_mode(albedo, sources["albedo"][0], mask)
             definition["maskInvert"] = definition["maskMode"] != "keep"
-            # The Marauder (CivBulk) masks are authored the other way round: white marks the
-            # contrasting paint band, so the trim weight is the raw mask value. Verified against
-            # the in-game bow, where the hull is dominant orange with the hull symbols inside it.
-            if (definition["maskMode"] == "trim"
-                    and ("civbulk" in name.lower() or "marauder" in name.lower())):
-                definition["maskInvert"] = False
+            if definition["maskMode"] == "trim":
+                self._build_bare(definition, albedo, name)
 
         normal, normal_origin = sources["normal"]
         if normal:
@@ -771,6 +791,42 @@ class MaterialBuilder(object):
                                                    self.sizes["mask"])
         definition["mask"] = self._write("mask", definition, source, width, height,
                                          1, values)
+
+    def _build_bare(self, definition, albedo_source, name):
+        """Plate-scale brightness map: paint stops on the brightest plates, bare metal shows.
+
+        The vent grilles and the light deck plates are not brighter per texel and carry no
+        separate mask value -- what makes them read bare in the game is that a whole plate is
+        left unpainted. Thresholding the albedo per texel therefore only produces speckle, so
+        the cut runs on a blurred copy and the renderer filters the result back up.
+        """
+        # Only the marauder (CivBulk) plating carries the louvred vents the reference shows;
+        # the Moorline pages are uniform plating and the same rule only speckles them.
+        if "civbulk" not in name.lower() and "marauder" not in name.lower():
+            return
+        try:
+            _n, width, height, channels, _f = self._sample("albedo", albedo_source)
+        except Exception:
+            return
+        red = channels[0]
+        size = 128
+        small, sw, sh = textures.downsample(red, width, height, size)
+        if sw < 8 or sh < 8:
+            return
+        # Local contrast, not absolute brightness: a plate is bare when it stands out from its
+        # own neighbourhood. The cut is a fixed quantile so every sheet contributes the same
+        # share of standing-out plates, whatever its overall exposure.
+        near = _box_mean(small, sw, sh, 2)
+        far = _box_mean(small, sw, sh, 14)
+        contrast = [near[i] - far[i] for i in range(sw * sh)]
+        ranked = sorted(contrast)
+        cut = max(ranked[min(len(ranked) - 1, int(len(ranked) * 0.94))], 10.0)
+        values = bytearray(255 if value >= cut else 0 for value in contrast)
+        covered = sum(1 for value in values if value) / float(sw * sh)
+        definition["bareMask"] = self._write("bare", definition, albedo_source, sw, sh,
+                                             1, values)
+        self.log("    bare %s <- %d/%d, %.1f%% bare"
+                 % (definition["id"], sw, sh, covered * 100.0))
 
     def _mask_mode(self, albedo_source, mask_source_key, mask_source):
         """"keep" when the mask's zero side keeps a distinctly coloured authored albedo."""
@@ -1127,12 +1183,12 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
     log = log or Logger()
     sizes = dict(DEFAULT_SIZES, **(sizes or {}))
     started = time.time()
-    folders = ("mesh", "mask", "albedo", "normal", "decal")
+    folders = ("mesh", "mask", "albedo", "normal", "decal", "bare")
     for sub in folders:
         os.makedirs(os.path.join(out_dir, sub), exist_ok=True)
     for sub, suffix in (("mesh", ".nlmesh"), ("mask", ".png"),
                         ("albedo", ".png"), ("normal", ".png"),
-                        ("decal", ".png")):
+                        ("decal", ".png"), ("bare", ".png")):
         folder = os.path.join(out_dir, sub)
         for name in os.listdir(folder):
             if name.endswith(suffix):

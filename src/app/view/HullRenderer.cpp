@@ -1,6 +1,9 @@
 #include "HullRenderer.h"
 
+#include <QColor>
 #include <QOpenGLShaderProgram>
+
+#include <cmath>
 #include <QVector2D>
 #include <QVector3D>
 #include <QVector4D>
@@ -82,6 +85,8 @@ uniform float uSmoothness;
 uniform float uMaskKeep;
 
 uniform float uAlbedoMean;      // luminance average of the albedo, used to keep paint brightness
+uniform bool uHasBare;          // louvred vent panels painted by the exporter
+uniform sampler2D uBare;
 uniform float uAlbedoDetail;    // how strongly the albedo modulates the paint (0..1)
 uniform float uDecalStrength;   // white markings baked into the albedo
 uniform float uExposure;
@@ -89,6 +94,9 @@ uniform float uExposure;
 uniform bool uOutlinePass;
 uniform vec3 uOutlineColor;
 uniform vec3 uCameraPosition;
+
+uniform int uDebugMode;      // 1 flat material colour, 2 raw paint mask, 3 albedo
+uniform vec4 uDebugColor;
 
 out vec4 fragColor;
 
@@ -106,6 +114,10 @@ void main()
 {
     if (uOutlinePass) {
         fragColor = vec4(uOutlineColor, 1.0);
+        return;
+    }
+    if (uDebugMode == 1) {
+        fragColor = vec4(uDebugColor.rgb, 1.0);
         return;
     }
 
@@ -145,6 +157,16 @@ void main()
     if (uHasAlbedo)
         albedoSample = texture(uAlbedo, uvTex).rgb;
 
+    if (uDebugMode == 2) {
+        float raw = uHasMask ? clamp(texture(uMask, uvTex).r, 0.0, 1.0) : 0.0;
+        fragColor = vec4(vec3(raw), 1.0);
+        return;
+    }
+    if (uDebugMode == 3) {
+        fragColor = vec4(albedoSample, 1.0);
+        return;
+    }
+
     vec3 color;
     if (uPainted) {
         // Livery surfaces: the paint colour decides the hue, the albedo only modulates it.
@@ -157,11 +179,10 @@ void main()
         // The atlas also carries dark structural bands that the game leaves in the base colour:
         // pull them out of the trim so the orange stops flooding the hull.
         painted = mix(painted, uBaseColor.rgb, smoothstep(0.42, 0.16, albedoLuma24));
-        float whitePanel = smoothstep(0.86, 0.97, albedoLuma24);
-        // A flat white colour map carries no panel information: skip it so the paint colour still
-        // drives the surface (the demo assembly uses a 1x1 white albedo).
-        float panelGate = 1.0 - step(0.95, uAlbedoMean);
-        painted = mix(painted, albedoSample, whitePanel * panelGate);
+        // Louvred vents stay bare metal in the game: the paint stops at the frame. Neither the
+        // mask nor the brightness can find them, so the exporter bakes their coverage.
+        float bare = (uMaskKeep > 0.5 || !uHasBare)
+            ? 0.0 : smoothstep(0.35, 0.70, texture(uBare, uvTex).r);
         if (uMaskKeep > 0.5) {
             // The mask only says where paint goes; the rest keeps its authored albedo, which is
             // what makes a brass truss sit inside an otherwise painted bridge.
@@ -170,6 +191,9 @@ void main()
         }
         vec3 detail = albedoSample / max(uAlbedoMean, 0.05);
         color = painted * mix(vec3(1.0), detail, clamp(uAlbedoDetail, 0.0, 1.0));
+        // Bare panels are metals lit by an environment this viewer has no probe for, so the
+        // albedo is lifted toward the plate colour the game shows.
+        color = mix(color, mix(vec3(0.88), albedoSample, 0.45) * uExposure, bare);
         if (uUseTint)
             color *= uTintColor.rgb;
         color *= uExposure;
@@ -429,6 +453,22 @@ float HullRenderer::albedoMean(const HullPackage *package, const QString &relati
     return mean;
 }
 
+QVector4D HullRenderer::debugColor(const QString &id)
+{
+    const QString key = id.isEmpty() ? QStringLiteral("-") : id;
+    auto found = m_debugColors.constFind(key);
+    if (found != m_debugColors.cend())
+        return QVector4D(found.value(), 1.0f);
+    // A golden-ratio hue walk keeps adjacent materials far apart in hue.
+    const QColor tone = QColor::fromHsvF(std::fmod(float(m_debugColors.size()) * 0.618034f, 1.0f),
+                                         0.72f, 1.0f);
+    const QVector3D rgb(tone.redF(), tone.greenF(), tone.blueF());
+    m_debugColors.insert(key, rgb);
+    m_legend += QStringLiteral("%1 #%2\n").arg(key,
+        QString::number(tone.rgb() & 0x00ffffff, 16).rightJustified(6, QLatin1Char('0')));
+    return QVector4D(rgb, 1.0f);
+}
+
 void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *package,
                              const RenderStyle &style, const QMatrix4x4 &view,
                              const QMatrix4x4 &projection, bool outlinePass)
@@ -450,6 +490,7 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
     program.setUniformValue("uAlbedo", 0);
     program.setUniformValue("uMask", 1);
     program.setUniformValue("uNormalMap", 2);
+    program.setUniformValue("uDebugMode", static_cast<int>(m_debugView));
 
     for (const DrawItem &item : assembly.items) {
         if (!item.mesh)
@@ -459,6 +500,9 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
             continue;
 
         const MaterialDef *material = item.material;
+        if (m_debugView == DebugView::Materials) {
+            program.setUniformValue("uDebugColor", debugColor(material ? material->id : QString()));
+        }
         const bool painted = material ? material->paintable : true;
         program.setUniformValue("uPainted", painted);
         program.setUniformValue("uMaterialColor", material ? material->baseColor : QColor(Qt::gray));
@@ -478,6 +522,14 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         program.setUniformValue("uHasAlbedo", hasAlbedo);
         program.setUniformValue("uAlbedoMix", albedoMix);
         program.setUniformValue("uAlbedoMean", albedoMean(package, albedoPath));
+        const QString barePath = material ? material->bareMaskPath : QString();
+        const GLuint bareId = gpu->hasUv ? texture(package, barePath) : 0;
+        program.setUniformValue("uHasBare", bareId != 0);
+        program.setUniformValue("uBare", 4);
+        if (bareId != 0) {
+            glActiveTexture(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_2D, bareId);
+        }
         program.setUniformValue("uAlbedoDetail", style.albedoDetail);
         program.setUniformValue("uDecalStrength", style.decalStrength);
         program.setUniformValue("uExposure", style.exposure);

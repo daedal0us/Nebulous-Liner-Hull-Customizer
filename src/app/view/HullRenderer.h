@@ -4,6 +4,8 @@
 #include <QMatrix4x4>
 #include <QOpenGLFunctions_3_3_Core>
 #include <QString>
+#include <QVector3D>
+#include <QVector4D>
 
 #include "RenderStyle.h"
 #include "nlhc/asset/HullPackage.h"
@@ -29,6 +31,12 @@ public:
               const QMatrix4x4 &view, const QMatrix4x4 &projection);
     void clearCaches();
 
+    // Diagnostic render modes used to map a rendered feature back to the material that owns it.
+    enum class DebugView { Off, Materials, Mask, Albedo };
+    void setDebugView(DebugView view) { m_debugView = view; }
+    // One "id #rrggbb" line per material drawn by the last Materials pass.
+    QString debugLegend() const { return m_legend; }
+
 private:
     struct GpuMesh
     {
@@ -45,6 +53,7 @@ private:
     };
 
     GpuMesh *gpuMesh(const MeshData *mesh);
+    QVector4D debugColor(const QString &materialId);
     GLuint texture(const HullPackage *package, const QString &relativePath);
     float albedoMean(const HullPackage *package, const QString &relativePath);
     void drawItems(const AssemblyResult &assembly, const HullPackage *package, const RenderStyle &style,
@@ -56,6 +65,9 @@ private:
     QHash<QString, GLuint> m_textures;
     QHash<QString, float> m_albedoMeans;
     QHash<QString, float> m_uniformCache;
+    DebugView m_debugView = DebugView::Off;
+    QHash<QString, QVector3D> m_debugColors;
+    QString m_legend;
 };
 
 } // namespace nlhc

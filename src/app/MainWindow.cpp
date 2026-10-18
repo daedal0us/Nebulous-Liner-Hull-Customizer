@@ -531,6 +531,24 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     applySplitterRatio();
 }
 
+void MainWindow::setDebugViewName(const QString &name)
+{
+    HullRenderer::DebugView view = HullRenderer::DebugView::Off;
+    if (name == QLatin1String("materials"))
+        view = HullRenderer::DebugView::Materials;
+    else if (name == QLatin1String("mask"))
+        view = HullRenderer::DebugView::Mask;
+    else if (name == QLatin1String("albedo"))
+        view = HullRenderer::DebugView::Albedo;
+    if (m_viewport)
+        m_viewport->setDebugView(view);
+}
+
+QString MainWindow::debugRenderLegend() const
+{
+    return m_viewport ? m_viewport->debugLegend() : QString();
+}
+
 QString MainWindow::debugAssemblySummary() const
 {
     return m_lastAssemblySummary;

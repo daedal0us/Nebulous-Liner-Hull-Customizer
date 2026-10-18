@@ -33,6 +33,8 @@ public:
 
     bool openFleet(const QString &path);
     void selectShipByIndex(int row);
+    void setDebugViewName(const QString &name);
+    QString debugRenderLegend() const;
     QString debugLayoutSummary() const;
     QString debugAssemblySummary() const;
     QString summarizeAssembly(const nlhc::AssemblyResult &assembly) const;
