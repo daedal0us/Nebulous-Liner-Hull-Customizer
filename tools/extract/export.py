@@ -586,6 +586,12 @@ class MaterialBuilder(object):
         if albedo and mask:
             definition["maskMode"] = self._mask_mode(albedo, sources["albedo"][0], mask)
             definition["maskInvert"] = definition["maskMode"] != "keep"
+            # The Marauder (CivBulk) masks are authored the other way round: white marks the
+            # contrasting paint band, so the trim weight is the raw mask value. Verified against
+            # the in-game bow, where the hull is dominant orange with the hull symbols inside it.
+            if (definition["maskMode"] == "trim"
+                    and ("civbulk" in name.lower() or "marauder" in name.lower())):
+                definition["maskInvert"] = False
 
         normal, normal_origin = sources["normal"]
         if normal:

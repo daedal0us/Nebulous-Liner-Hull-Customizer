@@ -551,9 +551,16 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
         if material["id"] in placeholder_masks:
             if material["maskInvert"]:
                 polarity_bad.append(material["id"] + " placeholder inverted")
-        elif material["maskChannel"] != "r" or not material["maskInvert"]:
-            polarity_bad.append(material["id"])
-    report.check("mask polarity is (1 - mask) on authored masks",
+        elif material["maskChannel"] != "r":
+            polarity_bad.append(material["id"] + " channel")
+        elif ("civbulk" in (names.get(material["id"]) or "").lower()
+                or "marauder" in (names.get(material["id"]) or "").lower()):
+            # Marauder masks are authored white-where-band, so trim uses the raw value.
+            if material["maskInvert"]:
+                polarity_bad.append(material["id"] + " marauder inverted")
+        elif not material["maskInvert"] and material.get("maskMode") != "keep":
+            polarity_bad.append(material["id"] + " unpolarised")
+    report.check("mask polarity follows the authoring convention per family",
                  not polarity_bad,
                  "%d masks, channel/polarity %s"
                  % (len(materials), "ok" if not polarity_bad
