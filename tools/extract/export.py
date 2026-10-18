@@ -583,6 +583,15 @@ class MaterialBuilder(object):
             self.log("    mask %s <- 4x4 placeholder (%r has no mask)"
                      % (definition["id"], name))
 
+        # The doodad/stencil sheets are plate atlases (white panels, hazard plates, warning
+        # text), not livery surfaces. The game shows them as authored metal; taking them as
+        # livery sprays those stencil colours across the whole tower.
+        if definition.get("albedo") in ("albedo/0004.png", "albedo/0018.png"):
+            definition["paintable"] = False
+            definition["materialRole"] = "fixed"
+            self.log("    role %s -> fixed (plate/stencil atlas)"
+                     % definition["id"])
+
         if albedo and mask:
             definition["maskMode"] = self._mask_mode(albedo, sources["albedo"][0], mask)
             definition["maskInvert"] = definition["maskMode"] != "keep"

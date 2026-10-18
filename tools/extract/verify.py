@@ -437,11 +437,13 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                 if material_id:
                     used.add(material_id)
             painted = sorted(used & livery_ids)
-            if hull_id == "Stock/Bulk Hauler" and painted:
-                bridge_issues.append("Bulk %s still livery %s" % (piece_id, painted))
-            if hull_id == "Stock/Container Hauler" and not painted:
-                bridge_issues.append("Container %s lost its livery" % piece_id)
-    report.check("freighter bridge stays brass, lineship bridge stays painted",
+            # Both bridge atlases are plate/stencil sheets (white panels, hazard plates,
+            # warning text): the game shows them as authored metal, so a livery reading
+            # sprays those stencil colours over the whole tower.
+            if painted:
+                bridge_issues.append("%s %s still livery %s"
+                                     % (hull_id.split("/")[-1], piece_id, painted))
+    report.check("both bridges keep their authored metal",
                  not bridge_issues,
                  "%d livery materials" % len(livery_ids) if not bridge_issues
                  else "; ".join(bridge_issues[:3]))

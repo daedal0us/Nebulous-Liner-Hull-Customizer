@@ -24396,8 +24396,8 @@
   },
   {
    "id": "t:0016",
-   "paintable": true,
-   "materialRole": "livery",
+   "paintable": false,
+   "materialRole": "fixed",
    "baseColor": [
     1.0,
     1.0,
@@ -24438,8 +24438,8 @@
   },
   {
    "id": "t:0018",
-   "paintable": true,
-   "materialRole": "livery",
+   "paintable": false,
+   "materialRole": "fixed",
    "baseColor": [
     1.0,
     1.0,
