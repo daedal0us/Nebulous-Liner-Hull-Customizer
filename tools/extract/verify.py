@@ -287,6 +287,77 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                      ", ".join((container or {}).get("names", [])[:4]),
                      "ok" if not empty_base else str(empty_base[:3])))
 
+    # --- livery policy (export.livery_materials) --------------------------
+    # The game recolours exactly the materials reachable through a hull piece's
+    # paintable meshes.  Being referenced by a hull piece is not enough: doodads,
+    # cranes and side tanks keep their authored copper.
+    names = stats.get("materialNames") or {}
+    livery_materials = [material for material in materials
+                        if material.get("materialRole") == "livery"]
+    fixed_materials = [material for material in materials
+                       if material.get("materialRole") == "fixed"]
+    unroled = [material["id"] for material in materials
+               if material.get("materialRole") not in ("livery", "fixed")]
+    report.check("every material declares materialRole", not unroled,
+                 "%d livery / %d fixed%s"
+                 % (len(livery_materials), len(fixed_materials),
+                    "" if not unroled else "; undeclared " + str(unroled[:3])))
+    mismatched = [material["id"] for material in materials
+                  if material["paintable"]
+                  != (material.get("materialRole") == "livery")]
+    report.check("paintable mirrors materialRole == livery", not mismatched,
+                 "%d materials" % len(materials) if not mismatched
+                 else "; ".join(mismatched[:4]))
+    livery_stats = stats.get("livery") or {}
+    report.check("livery resolved from the hull segment components",
+                 bool(livery_stats.get("segments")) and not livery_stats.get("fallback"),
+                 "%d segments -> %d materials, %d name-rule fallbacks%s"
+                 % (livery_stats.get("segments", 0), len(livery_materials),
+                    livery_stats.get("fallbackMaterials") or 0,
+                    "" if not livery_stats.get("unresolved") else
+                    "; unresolved " + ", ".join(livery_stats["unresolved"][:3])))
+
+    # --- livery per hull type: non-empty strict subset --------------------
+    hull_roles = stats.get("hullMaterials") or {}
+    role_counts = []
+    role_bad = []
+    for hull_id in HULL_IDS:
+        entry = hull_roles.get(hull_id) or {}
+        referenced = entry.get("referenced") or []
+        livery_ids = entry.get("livery") or []
+        role_counts.append("%s %d/%d"
+                           % (hull_id.split("/")[-1], len(livery_ids), len(referenced)))
+        if not livery_ids or len(livery_ids) >= len(referenced):
+            role_bad.append("%s livery=%d referenced=%d"
+                            % (hull_id, len(livery_ids), len(referenced)))
+    report.check("every hull type paints a strict subset of its materials",
+                 bool(hull_roles) and not role_bad,
+                 ", ".join(role_counts) if not role_bad else "; ".join(role_bad))
+    for hull_id in HULL_IDS:
+        entry = hull_roles.get(hull_id) or {}
+        for role in ("livery", "fixed"):
+            ids = entry.get(role) or []
+            print("     %-15s %-6s %2d %s"
+                  % (hull_id.split("/")[-1], role, len(ids),
+                     ", ".join("%s %s" % (material_id, names.get(material_id, "?"))
+                               for material_id in ids)), file=stream)
+
+    doodads = [material for material in materials
+               if material["id"] == "t:0004"
+               or "doodad" in (names.get(material["id"]) or "").lower()]
+    doodads_painted = ["%s %s=%s" % (material["id"],
+                                     names.get(material["id"], "?"),
+                                     material.get("materialRole"))
+                       for material in doodads
+                       if material.get("materialRole") != "fixed"]
+    report.check("doodads keep their authored colour (fixed)",
+                 bool(doodads) and not doodads_painted,
+                 "%d materials %s" % (len(doodads), ", ".join(
+                     "%s %s=%s" % (material["id"], names.get(material["id"], "?"),
+                                   material.get("materialRole"))
+                     for material in doodads)) if not doodads_painted
+                 else "; ".join(doodads_painted))
+
     # Every hull body material must carry authored maps: the addressable
     # texture bundles hold the 4096 px sources, so a 4x4 placeholder means the
     # GUID / folder resolution failed for that material.
@@ -341,6 +412,17 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                  % (len(hull_materials), len(hull_bad),
                     ", ".join("%s %s" % item for item in hull_bad[:4]),
                     "" if not unresolved else "; missing " + unresolved[0]))
+    livery_no_mask = ["%s %s" % (material["id"], names.get(material["id"], "?"))
+                      for material in livery_materials
+                      if not material.get("mask")
+                      or (material["id"], "mask") in placeholders]
+    report.check("every livery material has a real (non placeholder) mask",
+                 bool(livery_materials) and not livery_no_mask,
+                 "%d livery materials%s"
+                 % (len(livery_materials),
+                    "" if not livery_no_mask
+                    else "; placeholder/missing " + ", ".join(livery_no_mask[:4])))
+
     bad_dark = [item for item in dark_ratios if not 0.2 < item[1] < 0.8]
     ratio_span = "%.2f-%.2f" % (min(item[1] for item in dark_ratios),
                                 max(item[1] for item in dark_ratios)) \

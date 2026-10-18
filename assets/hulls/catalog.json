@@ -24039,6 +24039,7 @@
   {
    "id": "t:0001",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24056,7 +24057,8 @@
   },
   {
    "id": "t:0002",
-   "paintable": true,
+   "paintable": false,
+   "materialRole": "fixed",
    "baseColor": [
     1.0,
     1.0,
@@ -24065,7 +24067,7 @@
    "albedo": "albedo/0002.png",
    "albedoMode": "multiply",
    "albedoMix": 1.0,
-   "mask": "mask/0002.png",
+   "mask": "",
    "maskChannel": "r",
    "maskInvert": false,
    "trimBaked": false,
@@ -24075,6 +24077,7 @@
   {
    "id": "t:0003",
    "paintable": false,
+   "materialRole": "fixed",
    "baseColor": [
     1.0,
     0.7285,
@@ -24090,7 +24093,8 @@
   },
   {
    "id": "t:0004",
-   "paintable": true,
+   "paintable": false,
+   "materialRole": "fixed",
    "baseColor": [
     0.8302,
     0.7302,
@@ -24109,6 +24113,7 @@
   {
    "id": "t:0005",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24127,6 +24132,7 @@
   {
    "id": "t:0006",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24145,6 +24151,7 @@
   {
    "id": "t:0007",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24163,6 +24170,7 @@
   {
    "id": "t:0008",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24181,6 +24189,7 @@
   {
    "id": "t:0009",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24199,6 +24208,7 @@
   {
    "id": "t:0010",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24217,6 +24227,7 @@
   {
    "id": "t:0011",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24235,6 +24246,7 @@
   {
    "id": "t:0012",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24253,6 +24265,7 @@
   {
    "id": "t:0013",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24271,6 +24284,7 @@
   {
    "id": "t:0014",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24289,6 +24303,7 @@
   {
    "id": "t:0015",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24307,6 +24322,7 @@
   {
    "id": "t:0016",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24325,6 +24341,7 @@
   {
    "id": "t:0017",
    "paintable": false,
+   "materialRole": "fixed",
    "baseColor": [
     0.0,
     0.9516,
@@ -24341,6 +24358,7 @@
   {
    "id": "t:0018",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24359,6 +24377,7 @@
   {
    "id": "t:0019",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24377,6 +24396,7 @@
   {
    "id": "t:0020",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24395,6 +24415,7 @@
   {
    "id": "t:0021",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24413,6 +24434,7 @@
   {
    "id": "t:0022",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24431,6 +24453,7 @@
   {
    "id": "t:0023",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24449,6 +24472,7 @@
   {
    "id": "t:0024",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24467,6 +24491,7 @@
   {
    "id": "t:0025",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24485,6 +24510,7 @@
   {
    "id": "t:0026",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24503,6 +24529,7 @@
   {
    "id": "t:0027",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24521,6 +24548,7 @@
   {
    "id": "t:0028",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24539,6 +24567,7 @@
   {
    "id": "t:0029",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24557,6 +24586,7 @@
   {
    "id": "t:0030",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24575,6 +24605,7 @@
   {
    "id": "t:0031",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24593,6 +24624,7 @@
   {
    "id": "t:0032",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,
@@ -24611,6 +24643,7 @@
   {
    "id": "t:0033",
    "paintable": true,
+   "materialRole": "livery",
    "baseColor": [
     1.0,
     1.0,

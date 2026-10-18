@@ -79,6 +79,9 @@ def is_functional_material(name):
 #: Fields on a segment component naming the material the game clones before
 #: recolouring it: the tint pass only affects the clone.
 LIVERY_MATERIAL_FIELDS = ("_originalMaterial", "_originalMaterials")
+#: The material property the tint pass writes; a material that does not declare it
+#: (plain HDRP/Lit thruster and engine glow slots) keeps its authored colour.
+PAINT_TINT_PROPERTY = "_BasePaintTint"
 #: Renderer classes an _additionalMaterialTargets entry may reference.
 RENDERER_CLASSES = (hierarchy.CLASS_MESH_RENDERER, 137)
 
@@ -123,17 +126,37 @@ def paintable_segments(graph, section):
     return segments
 
 
+def declares_paint_tint(graph, path_id):
+    """True when the material declares the property the tint pass writes."""
+    properties = graph.value(path_id).get("m_SavedProperties") or {}
+    for entry in properties.get("m_Colors") or ():
+        if isinstance(entry, dict) and entry.get("first") == PAINT_TINT_PROPERTY:
+            return True
+    return False
+
+
 def segment_materials(graph, segment):
-    """Material pathIDs one segment component puts under the faction livery."""
+    """Material pathIDs one segment component puts under the faction livery.
+
+    Returns (materials, slots skipped for missing the paint tint property).
+    """
     value = graph.value(segment)
     found = []
     for field in LIVERY_MATERIAL_FIELDS:
         found.extend(_pptr_or_list(value.get(field)))
     for target in hierarchy.pptr_list(value.get("_additionalMaterialTargets")):
         found.extend(_renderer_materials(graph, target))
-    return [path_id for path_id in found
-            if path_id in graph.sf.by_path
-            and graph.sf.by_path[path_id].class_id == CLASS_MATERIAL]
+    materials = []
+    skipped = []
+    for path_id in found:
+        info = graph.sf.by_path.get(path_id)
+        if info is None or info.class_id != CLASS_MATERIAL:
+            continue
+        if declares_paint_tint(graph, path_id):
+            materials.append(path_id)
+        else:
+            skipped.append(path_id)
+    return materials, skipped
 
 
 def livery_materials(graph, hulls):
@@ -145,23 +168,26 @@ def livery_materials(graph, hulls):
     clone.  Those materials are therefore the ones the game really recolours;
     everything else keeps its authored colour.
 
-    Returns (materials, resolved segments, unresolved segment labels).
+    Returns (materials, resolved segments, unresolved segment labels, slot
+    materials skipped because they do not declare PAINT_TINT_PROPERTY).
     """
     materials = {}
     resolved = 0
     unresolved = []
+    skipped = set()
     for save_key, hull in hulls.items():
         for group in ("bows", "cores", "sterns", "superstructures"):
             for section in getattr(hull, group):
                 for segment in paintable_segments(graph, section):
-                    found = segment_materials(graph, segment)
+                    found, without_tint = segment_materials(graph, segment)
+                    skipped.update(without_tint)
                     if not found:
                         unresolved.append("%s %s" % (save_key, section.id))
                         continue
                     resolved += 1
                     for path_id in found:
                         materials.setdefault(path_id, set()).add(save_key)
-    return materials, resolved, unresolved
+    return materials, resolved, unresolved, skipped
 
 
 class Logger(object):
@@ -912,13 +938,19 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
                 % (type(exc).__name__, exc))
             aa_catalog = None
             pool = None
-    livery, livery_segments, livery_unresolved = livery_materials(graph, hulls)
+    (livery, livery_segments, livery_unresolved,
+     livery_without_tint) = livery_materials(graph, hulls)
     livery_fallback = not livery
     log("livery: %d materials from %d hull segments%s"
         % (len(livery), livery_segments,
            "" if not livery_unresolved else
            ", %d segments unresolved %s" % (len(livery_unresolved),
                                              livery_unresolved[:4])))
+    if livery_without_tint:
+        log("  livery skipped, no %s property: %d %s"
+            % (PAINT_TINT_PROPERTY, len(livery_without_tint),
+               sorted(graph.value(path_id).get("m_Name") or ""
+                      for path_id in livery_without_tint)[:6]))
     if livery_fallback:
         log("  WARNING no hull segment resolved a livery material: falling back "
             "to the name based paintable rule")
@@ -1083,6 +1115,8 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
             "materials": len(livery),
             "segments": livery_segments,
             "unresolved": list(livery_unresolved),
+            "withoutTint": sorted(graph.value(path_id).get("m_Name") or ""
+                                  for path_id in livery_without_tint),
             "fallback": livery_fallback,
             "fallbackMaterials": materials.fallback_count,
         },
