@@ -73,6 +73,9 @@ struct MaterialDef
     // fixed prop read as metal instead of flat plastics.
     float metallic = 0.0f;
     float smoothness = 0.5f;
+    // trim: mask=0 takes the Trim colour (hull stripes). keep: mask=0 keeps the authored albedo
+    // (brass trusses, grey deck plates) and only mask=1 is painted.
+    QString maskMode = QStringLiteral("trim");
 };
 
 struct HullTypeDef

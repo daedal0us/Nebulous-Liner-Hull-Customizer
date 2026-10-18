@@ -546,6 +546,8 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
     for material in materials:
         if not material.get("mask"):
             continue
+        if material.get("maskMode") == "keep":
+            continue  # keep-mode masks are white-where-painted, the opposite convention
         if material["id"] in placeholder_masks:
             if material["maskInvert"]:
                 polarity_bad.append(material["id"] + " placeholder inverted")

@@ -546,6 +546,9 @@ class MaterialBuilder(object):
             # specular lobe a fixed prop renders like flat plastic.
             "metallic": 0.0,
             "smoothness": 0.5,
+            # trim: mask=0 takes the Trim colour (hull stripes). keep: mask=0 keeps the authored
+            # albedo (brass props, grey deck plates) and only mask=1 is painted.
+            "maskMode": "trim",
         }
         self.by_path[path_id] = definition
         self.names[definition["id"]] = name
@@ -579,6 +582,10 @@ class MaterialBuilder(object):
             self.mask_sources[definition["id"]] = "placeholder"
             self.log("    mask %s <- 4x4 placeholder (%r has no mask)"
                      % (definition["id"], name))
+
+        if albedo and mask:
+            definition["maskMode"] = self._mask_mode(albedo, sources["albedo"][0], mask)
+            definition["maskInvert"] = definition["maskMode"] != "keep"
 
         normal, normal_origin = sources["normal"]
         if normal:
@@ -748,7 +755,8 @@ class MaterialBuilder(object):
         # into this texture, i.e. it gives the plate the contrasting stripe tint
         # so the albedo lettering stays readable.  Renderers must therefore use
         # (1 - mask) as the trim weight; maskInvert says exactly that.
-        definition["maskInvert"] = True
+        # keep-mode materials paint only where the mask is white, so the raw value is wanted.
+        definition["maskInvert"] = definition["maskMode"] != "keep"
         self.mask_sources[definition["id"]] = "%s:%s:%s" % (origin, channel, name)
         dark = sum(1 for value in values if value < 128) / float(len(values))
         self.log("    mask %s <- %-34s channel %s, dark %.0f%% (%s)"
@@ -757,6 +765,45 @@ class MaterialBuilder(object):
                                                    self.sizes["mask"])
         definition["mask"] = self._write("mask", definition, source, width, height,
                                          1, values)
+
+    def _mask_mode(self, albedo_source, mask_source_key, mask_source):
+        """"keep" when the mask's zero side keeps a distinctly coloured authored albedo."""
+        try:
+            _n, _w, _h, channels, _f = self._sample("albedo", albedo_source)
+            _m, _mw, _mh, mask_channels, _mf = self._sample("mask", mask_source)
+        except Exception:
+            return "trim"
+        red, green, blue, _alpha = channels
+        values = mask_channels[0]
+        low = high = 0
+        low_sat = high_sat = 0.0
+        for index in range(0, len(values), 7):
+            mask_index = index if index < len(values) else None
+            if mask_index is None:
+                continue
+            pixel = index if index < len(red) else None
+            if pixel is None:
+                continue
+            r, g, b = red[pixel], green[pixel], blue[pixel]
+            top = max(r, g, b)
+            sat = 0.0 if top == 0 else (top - min(r, g, b)) / float(top)
+            if values[index] < 32:
+                low += 1
+                low_sat += sat
+            elif values[index] > 223:
+                high += 1
+                high_sat += sat
+        if not low or not high:
+            return "trim"
+        if (low_sat / low) > (high_sat / high) + 0.08:
+            return "keep"
+        # The doodads atlas carries painted-in metal on the unpainted side; the scatter test above
+        # is noisy on it, so the family name decides.
+        try:
+            mask_name = self._sample("mask", mask_source)[0] or ""
+        except Exception:
+            mask_name = ""
+        return "keep" if "doodads" in mask_name.lower() else "trim"
 
     def _build_mask_map(self, definition, source):
         """HDRP _MaskMap: R = metallic, G = occlusion, A = smoothness.

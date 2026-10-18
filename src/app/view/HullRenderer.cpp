@@ -79,6 +79,7 @@ uniform bool uDecalUseAlpha;
 
 uniform float uMetallic;
 uniform float uSmoothness;
+uniform float uMaskKeep;
 
 uniform float uAlbedoMean;      // luminance average of the albedo, used to keep paint brightness
 uniform float uAlbedoDetail;    // how strongly the albedo modulates the paint (0..1)
@@ -150,6 +151,12 @@ void main()
         // Dividing by the texture mean keeps the paint at its authored brightness instead of
         // darkening every surface by the average of the detail map.
         vec3 painted = mix(uBaseColor.rgb, uTrimColor.rgb, trim);
+        if (uMaskKeep > 0.5) {
+            // The mask only says where paint goes; the rest keeps its authored albedo, which is
+            // what makes a brass truss sit inside an otherwise painted bridge.
+            vec3 authored = uMaterialColor.rgb * albedoSample;
+            painted = mix(authored, uBaseColor.rgb, trim);
+        }
         vec3 detail = albedoSample / max(uAlbedoMean, 0.05);
         color = painted * mix(vec3(1.0), detail, clamp(uAlbedoDetail, 0.0, 1.0));
         if (uUseTint)
@@ -496,6 +503,8 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         program.setUniformValue("uDecalUseAlpha",
                                 material && material->decalMode == QLatin1String("alpha"));
         program.setUniformValue("uDecal", 3);
+        program.setUniformValue("uMaskKeep",
+                                material && material->maskMode == QLatin1String("keep") ? 1.0f : 0.0f);
         program.setUniformValue("uMetallic", material ? material->metallic : 0.0f);
         program.setUniformValue("uSmoothness", material ? material->smoothness : 0.5f);
         if (hasDecal) {

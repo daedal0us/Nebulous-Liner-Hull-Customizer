@@ -24076,6 +24076,7 @@
    "trimBaked": false,
    "metallic": 1.0,
    "smoothness": 0.4551,
+   "maskMode": "trim",
    "normal": "normal/0001.png",
    "normalStrength": 1.0
   },
@@ -24097,6 +24098,7 @@
    "trimBaked": false,
    "metallic": 1.0,
    "smoothness": 0.4078,
+   "maskMode": "trim",
    "normal": "normal/0002.png",
    "normalStrength": 1.0
   },
@@ -24118,6 +24120,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0003.png",
    "normalStrength": 1.0
   },
@@ -24135,10 +24138,11 @@
    "albedoMix": 1.0,
    "mask": "mask/0004.png",
    "maskChannel": "r",
-   "maskInvert": true,
+   "maskInvert": false,
    "trimBaked": false,
    "metallic": 1.0,
    "smoothness": 0.4234,
+   "maskMode": "keep",
    "normal": "normal/0004.png",
    "normalStrength": 1.0
   },
@@ -24160,6 +24164,7 @@
    "trimBaked": false,
    "metallic": 1.0,
    "smoothness": 0.4646,
+   "maskMode": "trim",
    "normal": "normal/0005.png",
    "normalStrength": 1.0
   },
@@ -24181,6 +24186,7 @@
    "trimBaked": false,
    "metallic": 1.0,
    "smoothness": 0.4606,
+   "maskMode": "trim",
    "normal": "normal/0006.png",
    "normalStrength": 1.0
   },
@@ -24202,6 +24208,7 @@
    "trimBaked": false,
    "metallic": 0.9999,
    "smoothness": 0.467,
+   "maskMode": "trim",
    "normal": "normal/0007.png",
    "normalStrength": 1.0
   },
@@ -24223,6 +24230,7 @@
    "trimBaked": false,
    "metallic": 0.9999,
    "smoothness": 0.4801,
+   "maskMode": "trim",
    "normal": "normal/0008.png",
    "normalStrength": 1.0
   },
@@ -24244,6 +24252,7 @@
    "trimBaked": false,
    "metallic": 1.0,
    "smoothness": 0.4576,
+   "maskMode": "trim",
    "normal": "normal/0009.png",
    "normalStrength": 1.0
   },
@@ -24265,6 +24274,7 @@
    "trimBaked": false,
    "metallic": 0.9996,
    "smoothness": 0.4813,
+   "maskMode": "trim",
    "normal": "normal/0010.png",
    "normalStrength": 1.0
   },
@@ -24286,6 +24296,7 @@
    "trimBaked": false,
    "metallic": 0.9996,
    "smoothness": 0.4813,
+   "maskMode": "trim",
    "normal": "normal/0010.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24309,6 +24320,7 @@
    "trimBaked": false,
    "metallic": 0.9998,
    "smoothness": 0.4654,
+   "maskMode": "trim",
    "normal": "normal/0012.png",
    "normalStrength": 1.0
   },
@@ -24330,6 +24342,7 @@
    "trimBaked": false,
    "metallic": 0.9998,
    "smoothness": 0.4654,
+   "maskMode": "trim",
    "normal": "normal/0012.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24353,6 +24366,7 @@
    "trimBaked": false,
    "metallic": 0.9999,
    "smoothness": 0.4819,
+   "maskMode": "trim",
    "normal": "normal/0014.png",
    "normalStrength": 1.0
   },
@@ -24374,6 +24388,7 @@
    "trimBaked": false,
    "metallic": 0.9999,
    "smoothness": 0.4819,
+   "maskMode": "trim",
    "normal": "normal/0014.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24393,10 +24408,11 @@
    "albedoMix": 0.35,
    "mask": "mask/0004.png",
    "maskChannel": "r",
-   "maskInvert": true,
+   "maskInvert": false,
    "trimBaked": false,
    "metallic": 1.0,
    "smoothness": 0.4234,
+   "maskMode": "keep",
    "normal": "normal/0004.png",
    "normalStrength": 1.0
   },
@@ -24417,7 +24433,8 @@
    "maskInvert": false,
    "trimBaked": false,
    "metallic": 0.0,
-   "smoothness": 0.5
+   "smoothness": 0.5,
+   "maskMode": "trim"
   },
   {
    "id": "t:0018",
@@ -24433,10 +24450,11 @@
    "albedoMix": 0.35,
    "mask": "mask/0018.png",
    "maskChannel": "r",
-   "maskInvert": true,
+   "maskInvert": false,
    "trimBaked": false,
    "metallic": 0.9612,
    "smoothness": 0.5102,
+   "maskMode": "keep",
    "normal": "normal/0018.png",
    "normalStrength": 1.0
   },
@@ -24458,6 +24476,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0019.png",
    "normalStrength": 1.0
   },
@@ -24479,6 +24498,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0019.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24502,6 +24522,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0021.png",
    "normalStrength": 1.0
   },
@@ -24523,6 +24544,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0021.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24546,6 +24568,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0023.png",
    "normalStrength": 1.0
   },
@@ -24567,6 +24590,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0023.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24590,6 +24614,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0025.png",
    "normalStrength": 1.0
   },
@@ -24611,6 +24636,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0026.png",
    "normalStrength": 1.0
   },
@@ -24632,6 +24658,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0027.png",
    "normalStrength": 1.0
   },
@@ -24653,6 +24680,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0028.png",
    "normalStrength": 1.0
   },
@@ -24674,6 +24702,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0028.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24697,6 +24726,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0030.png",
    "normalStrength": 1.0
   },
@@ -24718,6 +24748,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0030.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24741,6 +24772,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0032.png",
    "normalStrength": 1.0
   },
@@ -24762,6 +24794,7 @@
    "trimBaked": false,
    "metallic": 0.0,
    "smoothness": 0.5,
+   "maskMode": "trim",
    "normal": "normal/0032.png",
    "normalStrength": 1.0,
    "decalMode": "alpha",
@@ -24781,10 +24814,11 @@
    "albedoMix": 1.0,
    "mask": "mask/0004.png",
    "maskChannel": "r",
-   "maskInvert": true,
+   "maskInvert": false,
    "trimBaked": false,
    "metallic": 1.0,
    "smoothness": 0.4234,
+   "maskMode": "keep",
    "normal": "normal/0004.png",
    "normalStrength": 1.0
   },
@@ -24802,10 +24836,11 @@
    "albedoMix": 1.0,
    "mask": "mask/0018.png",
    "maskChannel": "r",
-   "maskInvert": true,
+   "maskInvert": false,
    "trimBaked": false,
    "metallic": 0.9612,
    "smoothness": 0.5102,
+   "maskMode": "keep",
    "normal": "normal/0018.png",
    "normalStrength": 1.0
   }
