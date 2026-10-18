@@ -45,10 +45,9 @@ const char *kFragmentShader = R"GLSL(
 in vec3 vNormal;
 in vec2 vUv;
 
-// The exported PNGs carry Unity's bottom-up rows in a top-down file, so every map has to be
-// sampled with V inverted. Hull plating is orientation-free and hides this; the doodads atlas
-// (with its red signage) exposes it, which is what put lettering on the cargo crates.
-vec2 textureUv() { return vec2(vUv.x, 1.0 - vUv.y); }
+// UVs are used exactly as the meshes store them: writing and sampling the maps in the same
+// orientation keeps stencil text ("NO EVA FWD THIS LINE") and the hull symbols upright.
+vec2 textureUv() { return vUv; }
 in float vTrim;
 in vec3 vWorld;
 
