@@ -153,8 +153,11 @@ void main()
         vec3 painted = mix(uBaseColor.rgb, uTrimColor.rgb, trim);
         // The hull atlas carries near-white panels (vent grilles, radiator stripes) that the game
         // leaves unpainted. Their albedo is the colour, so blend it back over the paint.
-        float whitePanel = smoothstep(0.80, 0.94,
-            dot(albedoSample, vec3(0.2990, 0.5870, 0.1140)));
+        float albedoLuma24 = dot(albedoSample, vec3(0.2990, 0.5870, 0.1140));
+        // The atlas also carries dark structural bands that the game leaves in the base colour:
+        // pull them out of the trim so the orange stops flooding the hull.
+        painted = mix(painted, uBaseColor.rgb, smoothstep(0.42, 0.16, albedoLuma24));
+        float whitePanel = smoothstep(0.86, 0.97, albedoLuma24);
         // A flat white colour map carries no panel information: skip it so the paint colour still
         // drives the surface (the demo assembly uses a 1x1 white albedo).
         float panelGate = 1.0 - step(0.95, uAlbedoMean);
