@@ -216,6 +216,73 @@ private slots:
         QFile::remove(path);
     }
 
+    // Activates once the addressables textures are exported: every hull body material must
+    // carry a real albedo and paint mask (a 4x4 placeholder is 68 bytes).
+    void hullMaterialsHaveRealTextures()
+    {
+        nlhc::HullPackage package;
+        QString error;
+        if (!package.load(assetRoot(), &error) || package.hullTypes().isEmpty())
+            QSKIP("asset package not generated yet");
+
+        const QStringList hulls = {
+            QStringLiteral("Stock/Bulk Hauler"),
+            QStringLiteral("Stock/Container Hauler"),
+            QStringLiteral("Stock/Container Hauler Refit"),
+        };
+        int missingAlbedo = 0;
+        int missingMask = 0;
+        int albedoPlaceholders = 0;
+        int maskPlaceholders = 0;
+        qint64 bytes = 0;
+
+        QSet<QString> seen;
+        for (const QString &hullId : hulls) {
+            const nlhc::HullTypeDef *type = package.hullType(hullId);
+            if (!type)
+                continue;
+            const QVector<QStringList> groups = {type->bows, type->cores, type->sterns};
+            for (const QStringList &ids : groups) {
+                for (const QString &id : ids) {
+                    const nlhc::Piece *piece = package.piece(id);
+                    if (!piece)
+                        continue;
+                    for (const nlhc::PieceNode &node : piece->nodes) {
+                        const nlhc::MaterialDef *material = package.material(node.materialId);
+                        if (!material || !material->paintable || seen.contains(material->id))
+                            continue;
+                        seen.insert(material->id);
+                        if (material->albedoPath.isEmpty())
+                            ++missingAlbedo;
+                        if (material->maskPath.isEmpty())
+                            ++missingMask;
+                        const QString root = package.rootDir();
+                        // A 4x4 all-black mask (68 B) means "this material has no trim",
+                        // which is legitimate; a placeholder albedo is not.
+                        for (const auto &entry : {qMakePair(material->albedoPath, true),
+                                                  qMakePair(material->maskPath, false)}) {
+                            if (entry.first.isEmpty())
+                                continue;
+                            const QFileInfo info(root + QLatin1Char('/') + entry.first);
+                            bytes += info.size();
+                            if (info.size() >= 1024)
+                                continue;
+                            entry.second ? ++albedoPlaceholders : ++maskPlaceholders;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (missingAlbedo > 0)
+            QSKIP("addressables textures not exported yet");
+        QCOMPARE(missingMask, 0);
+        QCOMPARE(albedoPlaceholders, 0);
+        QVERIFY2(maskPlaceholders <= 4, qPrintable(QStringLiteral("mask placeholders %1").arg(maskPlaceholders)));
+        QVERIFY2(bytes < 60LL * 1024 * 1024,
+                 qPrintable(QStringLiteral("texture bytes %1").arg(bytes)));
+    }
+
     void packageMatchesCatalogShape()
     {
         QFile catalog(assetRoot() + QStringLiteral("/catalog.json"));

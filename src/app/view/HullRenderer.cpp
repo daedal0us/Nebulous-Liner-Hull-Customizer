@@ -102,8 +102,10 @@ void main()
         vec3 dp1perp = cross(normal, dp1);
         vec3 tangent = dp2perp * duv1.x + dp1perp * duv2.x;
         vec3 bitangent = dp2perp * duv1.y + dp1perp * duv2.y;
-        float scale = inversesqrt(max(dot(tangent, tangent), dot(bitangent, bitangent)));
-        if (scale > 0.0) {
+        float longest = max(dot(tangent, tangent), dot(bitangent, bitangent));
+        // UV-degenerate triangles would produce a zero basis; keep the mesh normal there.
+        if (longest > 1e-12) {
+            float scale = inversesqrt(longest);
             tangent *= scale;
             bitangent *= scale;
             vec3 sampled = texture(uNormalMap, vUv).xyz * 2.0 - 1.0;

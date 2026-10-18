@@ -7,9 +7,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import struct
 import time
 
-from . import hierarchy, mathutil, meshes, serialized, textures, unityfs
+from . import addressables, hierarchy, mathutil, meshes, serialized, textures, unityfs
 
 EXTRACTOR_VERSION = "0.1.0"
 BUNDLE_NAME = "stock-f2"
@@ -42,6 +44,31 @@ IDENTITY_NODE = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), (1.0, 1.0, 1.0))
 FUNCTIONAL_MATERIALS = ("engine glow", "window", "light", "lamp", "flare",
                         "emissive", "thruster glow", "fx")
 
+#: texture slot -> (material property, addressable asset name suffix)
+AA_SLOTS = (("albedo", "_BaseColorMap", "_base_color"),
+            ("mask", "_PaintMask", "_paint_mask"),
+            ("normal", "_NormalMap", "_normal"))
+AA_PROPERTY = {slot[0]: slot[1] for slot in AA_SLOTS}
+AA_SUFFIX = {slot[0]: slot[2] for slot in AA_SLOTS}
+
+#: hull body material name -> addressable "<Variant> Textures" folder.  The
+#: authoring tool uses both "Marauder_A_Bow" and "CivBulk - A - Bow".
+SEGMENT_MATERIALS = (
+    re.compile(r"^(?P<ship>[A-Za-z0-9]+)_(?P<variant>[ABC])_(?P<segment>Bow|Mid|Core|Stern)"
+               r"(?P<tail>_[A-Za-z0-9]+)?$"),
+    re.compile(r"^(?P<ship>[A-Za-z0-9 ]+?) - (?P<variant>[ABC]) - "
+               r"(?P<segment>Bow|Mid|Core|Stern)(?: (?P<tail>[A-Za-z]+))?$"),
+)
+#: the core segments are named "Mid" in the prefabs and "core" in the textures
+SEGMENT_ALIAS = {"mid": "core"}
+
+#: MonoBehaviour that stores a hull segment material's addressable GUIDs
+SEGMENT_COMPONENT = "HullSegmentMultiMaterial"
+CLASS_MATERIAL = 21
+CLASS_TEXTURE = 28
+
+DEFAULT_SIZES = {"albedo": 512, "mask": 512, "normal": 512}
+
 
 def is_functional_material(name):
     lowered = (name or "").lower()
@@ -70,6 +97,103 @@ def file_sha256(path, chunk=1 << 20):
     return digest.hexdigest()
 
 
+def segment_textures(graph, catalog, log):
+    """Addressable texture GUIDs of the hull segment materials.
+
+    Multi-material segments swap their maps at runtime with
+    textures that only exist in the addressables bundles, and stores them as
+    (material property, asset GUID) string pairs.  Those pairs are the only
+    link between a material and its 4096 px source, so the component payload is
+    scanned for length prefixed "_Name" + 32 character GUID strings.
+
+    Returns (material pathID -> {property: guid}, material name prefix ->
+    addressable ship folder).
+    """
+    if catalog is None:
+        return {}, {}
+    serialized_file = graph.sf
+    scripts = serialized_file.mono_scripts()
+    material_ids = {info.path_id for info in serialized_file.objects_of(CLASS_MATERIAL)}
+    tables = {}
+    for path_id, script_id in serialized_file.component_script_path_ids().items():
+        if scripts.get(script_id) != SEGMENT_COMPONENT:
+            continue
+        info = serialized_file.by_path.get(path_id)
+        if info is None:
+            continue
+        data = serialized_file.object_data(info)
+        target = _referenced_material(data, material_ids)
+        pairs = _guid_pairs(data)
+        if target is None or not pairs:
+            continue
+        tables.setdefault(target, {}).update(pairs)
+
+    roots = {}
+    for path_id, table in tables.items():
+        name = graph.value(path_id).get("m_Name") or ""
+        prefix = name.split("_")[0].lower()
+        if not prefix or prefix in roots:
+            continue
+        for slot in ("albedo", "mask", "normal"):
+            guid = table.get(AA_PROPERTY[slot])
+            found = catalog.resolve(guid) if guid else None
+            if not found:
+                continue
+            roots[prefix] = os.path.dirname(os.path.dirname(found[0]))
+            log("  addressable textures: %-22s -> %s" % (name, roots[prefix]))
+            break
+    log("  hull segment guid tables: %d materials, %d ship folders"
+        % (len(tables), len(roots)))
+    return tables, roots
+
+
+def _referenced_material(data, material_ids):
+    """pathID of the first Material a MonoBehaviour payload references."""
+    found = None
+    for offset in range(0, max(0, len(data) - 11), 4):
+        path_id = struct.unpack_from("<q", data, offset + 4)[0]
+        if path_id in material_ids:
+            if found is not None and found != path_id:
+                return found
+            found = path_id
+    return found
+
+
+GUID_PAIR_NAME = re.compile(rb"_[A-Za-z0-9_]{2,40}")
+
+
+def _guid_pairs(data):
+    """{property: guid} from the length prefixed string pairs in a payload."""
+    pairs = {}
+    for offset in range(0, max(0, len(data) - 40)):
+        length = struct.unpack_from("<I", data, offset)[0]
+        if not 2 <= length <= 48 or offset + 4 + length > len(data):
+            continue
+        name = data[offset + 4:offset + 4 + length]
+        if not GUID_PAIR_NAME.fullmatch(name):
+            continue
+        position = (offset + 4 + length + 3) & ~3
+        if position + 36 > len(data):
+            continue
+        if struct.unpack_from("<I", data, position)[0] != 32:
+            continue
+        guid = data[position + 4:position + 36]
+        if not all(char in b"0123456789abcdef" for char in guid):
+            continue
+        pairs[name.decode("ascii")] = guid.decode("ascii")
+    return pairs
+
+
+def _interleave(red, green, blue):
+    """Pack three channels into one RGB payload."""
+    values = bytearray(len(red) * 3)
+    for i in range(len(red)):
+        values[i * 3] = red[i]
+        values[i * 3 + 1] = green[i]
+        values[i * 3 + 2] = blue[i]
+    return values
+
+
 class MaterialBuilder(object):
     """Decodes the textures a material needs and writes them as PNG.
 
@@ -77,20 +201,35 @@ class MaterialBuilder(object):
     surface takes the faction livery (_BasePaintTint / _StripePaintTint), whether
     or not an albedo texture could be resolved.  Only clearly functional props
     (emitters, glazing) keep a fixed colour.
+
+    A texture slot resolves as: the addressable GUID the hull segment component
+    stores -> the addressable "<Ship>_<Variant>_<Segment>" folder convention ->
+    the texture the material references inside its own bundle -> a 4x4
+    placeholder (masks only).
     """
 
-    def __init__(self, graph, out_dir, tex_size, resource_stream, log):
+    def __init__(self, graph, out_dir, sizes, resource_stream, log,
+                 catalog=None, pool=None, guid_tables=None, ship_roots=None,
+                 normals=True):
         self.graph = graph
         self.out_dir = out_dir
-        self.tex_size = tex_size
+        self.sizes = sizes
         self.resource_stream = resource_stream
         self.log = log
+        self.catalog = catalog
+        self.pool = pool
+        self.guid_tables = guid_tables or {}
+        self.ship_roots = ship_roots or {}
+        self.normals = normals
         self.cache = {}
+        self.png_cache = {}
         self.definitions = []
         self.by_path = {}
         self.failures = []
         self._by_name = None
         self.mask_sources = {}
+        self.texture_sources = {slot[0]: {} for slot in AA_SLOTS}
+        self.shared_pngs = 0
         self.names = {}
         self.fixed_names = []
 
@@ -105,29 +244,22 @@ class MaterialBuilder(object):
             self._by_name = names
         return self._by_name
 
-    def resolve_mask(self, environments):
-        """Find the stripe mask for a material.
+    def _sibling_mask(self, environments):
+        """Mask stored next to the albedo under the bundle naming convention.
 
-        Hull segment materials leave their own _PaintMask slot empty: the mask is
-        swapped in at runtime by HullSegmentMultiMaterial from an addressable
-        texture table that stores only a GUID.  Those textures do live in the
-        bundle, so the mask is located through the naming convention
-        (<_BaseColorMap without _base_color>) + _paint_mask.
+        The authoring tool names the maps of one hull segment
+        <segment>_base_color / <segment>_paint_mask / <segment>_normal, so a
+        material without a _PaintMask slot still has a mask in its own bundle.
         """
-        direct = environments.get("_PaintMask")
-        if direct:
-            return direct, "property"
-        base = environments.get("_BaseColorMap")
+        base = environments.get("_BaseColorMap") or environments.get("_MainTex")
         if not base:
-            return None, "no-base-color-map"
+            return None
         base_name = self.graph.value(base).get("m_Name") or ""
         for suffix in ("_base_color", "_basecolor", "_albedo", "_basecolour"):
             if base_name.endswith(suffix):
                 candidate = base_name[:-len(suffix)] + "_paint_mask"
-                path_id = self.texture_by_name().get(candidate)
-                if path_id:
-                    return path_id, "name"
-        return None, "none"
+                return self.texture_by_name().get(candidate)
+        return None
 
     def material_id(self, path_id):
         material = self.by_path.get(path_id)
@@ -162,9 +294,9 @@ class MaterialBuilder(object):
         if base is None:
             base = (1.0, 1.0, 1.0, 1.0)
 
-        has_albedo_map = bool(environments.get("_BaseColorMap")
-                             or environments.get("_MainTex"))
         name = value.get("m_Name") or ""
+        sources = self._resolve_slots(path_id, name, environments)
+        has_albedo_map = sources["albedo"][0] is not None
         paintable = not is_functional_material(name)
         if not paintable:
             self.fixed_names.append(name)
@@ -196,9 +328,13 @@ class MaterialBuilder(object):
         self.names[definition["id"]] = name
         self.definitions.append(definition)
 
-        mask_path, mask_source = self.resolve_mask(environments)
-        if mask_path:
-            self._build_mask(definition, mask_path, mask_source)
+        albedo, albedo_origin = sources["albedo"]
+        if albedo:
+            self._build_albedo(definition, albedo, albedo_origin)
+
+        mask, mask_origin = sources["mask"]
+        if mask:
+            self._build_mask(definition, mask, mask_origin)
         elif definition["paintable"]:
             # No authored stripe mask: an all black mask keeps the renderer on
             # the base paint everywhere instead of falling back to the trim tint.
@@ -207,41 +343,160 @@ class MaterialBuilder(object):
                                bytearray(16))
             definition["mask"] = relative
             self.mask_sources[definition["id"]] = "placeholder"
+            self.log("    mask %s <- 4x4 placeholder (%r has no mask)"
+                     % (definition["id"], name))
 
-        albedo_path = environments.get("_BaseColorMap") or environments.get("_MainTex")
-        if albedo_path:
-            self._build_albedo(definition, albedo_path)
+        normal, normal_origin = sources["normal"]
+        if normal:
+            self._build_normal(definition, normal, normal_origin)
         return definition["id"]
 
     # -- texture plumbing --------------------------------------------------
-    def _texture(self, path_id):
-        cached = self.cache.get(path_id)
+    def _resolve_slots(self, path_id, name, environments):
+        """{slot: (source, origin)} for the three hull maps of a material."""
+        table = self.guid_tables.get(path_id) or {}
+        slots = {}
+        for slot in ("albedo", "mask", "normal"):
+            if slot == "normal" and not self.normals:
+                slots[slot] = (None, "disabled")
+                continue
+            source, origin = self._resolve(slot, name, environments, table)
+            counts = self.texture_sources[slot]
+            counts[origin] = counts.get(origin, 0) + 1
+            slots[slot] = (source, origin)
+        return slots
+
+    def _resolve(self, kind, name, environments, table):
+        """(source, origin) of one texture slot.
+
+        A source is ("guid", guid) for an addressable texture or
+        ("local", pathID) for a texture that lives in the hull bundle itself.
+        """
+        guid = table.get(AA_PROPERTY[kind])
+        if guid and self.catalog is not None and self.catalog.resolve(guid):
+            return ("guid", guid), "guid"
+        guid = self._convention(name, kind, environments)
+        if guid:
+            return ("guid", guid), "convention"
+        path_id = environments.get(AA_PROPERTY[kind])
+        if path_id:
+            return ("local", path_id), "property"
+        if kind == "albedo" and environments.get("_MainTex"):
+            return ("local", environments["_MainTex"]), "property"
+        if kind == "mask":
+            sibling = self._sibling_mask(environments)
+            if sibling:
+                return ("local", sibling), "name"
+        return None, "missing"
+
+    def _convention(self, name, kind, environments):
+        """Addressable texture of <Ship>_<A|B|C>_<Bow|Mid|Core|Stern>[_Tail]."""
+        if self.catalog is None:
+            return None
+        match = None
+        for pattern in SEGMENT_MATERIALS:
+            match = pattern.match(name or "")
+            if match:
+                break
+        if not match:
+            return None
+        root = self.ship_roots.get(match.group("ship").lower())
+        if not root:
+            root = self._local_root(environments)
+        if not root:
+            return None
+        folder = "%s/%s Textures" % (root, match.group("variant").upper())
+        segment = match.group("segment").lower()
+        prefix = SEGMENT_ALIAS.get(segment, segment) + "_"
+        return self.catalog.find_in_folder(folder, prefix, AA_SUFFIX[kind])
+
+    def _local_root(self, environments):
+        """Addressable ship folder deduced from the local albedo texture name.
+
+        Materials the segment component does not describe ("CivBulk - A - Bow")
+        still reference the lower resolution maps in their own bundle, and the
+        texture name carries the ship code ("bulker_1_bow_base_color").
+        """
+        if self.catalog is None:
+            return None
+        for prop in ("_BaseColorMap", "_MainTex"):
+            path_id = environments.get(prop)
+            if not path_id:
+                continue
+            base = self.graph.value(path_id).get("m_Name") or ""
+            for suffix in ("_base_color", "_basecolor", "_albedo", "_basecolour"):
+                if base.lower().endswith(suffix):
+                    code = base[:-len(suffix)].split("_")[0].lower()
+                    return self.catalog.folder_roots.get(code)
+        return None
+
+    def _sample(self, slot, source):
+        """(name, width, height, (r, g, b, a)) decoded at the slot's size."""
+        size = self.sizes[slot]
+        key = (source, size)
+        cached = self.cache.get(key)
         if cached is not None:
             if isinstance(cached, Exception):
                 raise cached
             return cached
         try:
-            info = textures.read_texture(self.graph.sf, path_id)
-            level, _, width, height = textures.pick_mip(info, self.tex_size)
-            decoded = textures.decode_mip(info, level, self.resource_stream)
-            entry = (info, level, decoded)
-            self.cache[path_id] = entry
-            return entry
+            entry = self._sample_uncached(source, size)
         except Exception as exc:
-            self.cache[path_id] = exc
-            self.failures.append((path_id, str(exc)))
+            self.cache[key] = exc
+            self.failures.append(("%s:%s" % (source[0], source[1]), str(exc)))
             raise
+        self.cache[key] = entry
+        return entry
 
-    def _build_mask(self, definition, path_id, source):
+    def _sample_uncached(self, source, size):
+        if source[0] == "guid":
+            found = self.pool.texture(source[1]) if self.pool is not None else None
+            if found is None:
+                raise textures.TextureError(
+                    "addressable texture %s is not in its bundle" % (source[1],))
+            serialized_file, path_id, stream = found
+        else:
+            serialized_file, path_id, stream = (self.graph.sf, source[1],
+                                                self.resource_stream)
+        info = textures.read_texture(serialized_file, path_id)
+        level, _, _, _ = textures.pick_mip(info, size)
+        width, height, red, green, blue, alpha = textures.decode_mip(
+            info, level, stream)
+        if width > size or height > size:
+            red, width, height = textures.downsample(red, width, height, size)
+            green, _, _ = textures.downsample(green, width, height, size)
+            blue, _, _ = textures.downsample(blue, width, height, size)
+            alpha, _, _ = textures.downsample(alpha, width, height, size)
+        return info.name, width, height, (red, green, blue, alpha), info.format
+
+    def _write(self, slot, definition, source, width, height, channels, values):
+        """PNG path for a slot; identical sources share one file."""
+        key = (slot, source)
+        existing = self.png_cache.get(key)
+        if existing is not None:
+            self.shared_pngs += 1
+            return existing
+        relative = "%s/%s.png" % (slot, definition["id"].split(":")[1])
+        textures.write_png(os.path.join(self.out_dir, relative), width, height,
+                           channels, values)
+        self.png_cache[key] = relative
+        return relative
+
+    def _build_mask(self, definition, source, origin):
         try:
-            info, level, (width, height, red, green, blue, alpha) = self._texture(path_id)
+            name, width, height, channels, _fmt = self._sample("mask", source)
         except Exception as exc:
             self.log("    mask %s undecodable (%s)" % (definition["id"], exc))
             definition["trimBaked"] = True
             self.mask_sources[definition["id"]] = "failed"
             return
+        red, green, blue, alpha = channels
         stats = textures.channel_stats(red, green, blue, alpha)
-        channel = textures.choose_mask_channel(stats)
+        # Luminance masks (the authored _PaintMask is one) carry the stripe
+        # pattern in every colour channel; averaging noise in the others would
+        # only blur the polarity.
+        channel = ("r" if textures.is_grayscale(red, green, blue)
+                   else textures.choose_mask_channel(stats))
         values = {"r": red, "g": green, "b": blue, "a": alpha}[channel]
         definition["maskChannel"] = channel
         # The authored _PaintMask is WHITE where the base paint applies and BLACK
@@ -251,24 +506,22 @@ class MaterialBuilder(object):
         # so the albedo lettering stays readable.  Renderers must therefore use
         # (1 - mask) as the trim weight; maskInvert says exactly that.
         definition["maskInvert"] = True
-        self.mask_sources[definition["id"]] = "%s:%s:%s" % (
-            source, channel, info.name)
-        coverage = sum(1 for value in values if value >= 128) / float(len(values))
-        self.log("    mask %s <- %-34s channel %s, stripe %.0f%% (%s)"
-                 % (definition["id"], info.name, channel, coverage * 100.0, source))
-        values, out_width, out_height = textures.downsample(values, width, height,
-                                                           self.tex_size)
-        relative = "mask/%s.png" % definition["id"].split(":")[1]
-        textures.write_png(os.path.join(self.out_dir, relative), out_width,
-                           out_height, 1, values)
-        definition["mask"] = relative
+        self.mask_sources[definition["id"]] = "%s:%s:%s" % (origin, channel, name)
+        dark = sum(1 for value in values if value < 128) / float(len(values))
+        self.log("    mask %s <- %-34s channel %s, dark %.0f%% (%s)"
+                 % (definition["id"], name, channel, dark * 100.0, origin))
+        values, width, height = textures.downsample(values, width, height,
+                                                   self.sizes["mask"])
+        definition["mask"] = self._write("mask", definition, source, width, height,
+                                         1, values)
 
-    def _build_albedo(self, definition, path_id):
+    def _build_albedo(self, definition, source, origin):
         try:
-            info, level, (width, height, red, green, blue, alpha) = self._texture(path_id)
+            name, width, height, channels, _fmt = self._sample("albedo", source)
         except Exception as exc:
             self.log("    albedo %s undecodable (%s)" % (definition["id"], exc))
             return
+        red, green, blue, alpha = channels
         grey = textures.is_grayscale(red, green, blue)
         definition["albedoMode"] = "multiply" if grey else "overlay"
         # multiply: rgb = paint * lerp(1, albedo, mix) -- 1.0 keeps the full
@@ -276,24 +529,35 @@ class MaterialBuilder(object):
         # overlay: the albedo is added over the paint with a lighter weight.
         definition["albedoMix"] = 1.0 if grey else 0.35
         if grey:
-            values, out_width, out_height = textures.downsample(red, width, height,
-                                                               self.tex_size)
-            channels = 1
+            values, channel_count = red, 1
         else:
-            red, out_width, out_height = textures.downsample(red, width, height,
-                                                            self.tex_size)
-            green, _, _ = textures.downsample(green, width, height, self.tex_size)
-            blue, _, _ = textures.downsample(blue, width, height, self.tex_size)
-            values = bytearray(out_width * out_height * 3)
-            for i in range(out_width * out_height):
-                values[i * 3] = red[i]
-                values[i * 3 + 1] = green[i]
-                values[i * 3 + 2] = blue[i]
-            channels = 3
-        relative = "albedo/%s.png" % definition["id"].split(":")[1]
-        textures.write_png(os.path.join(self.out_dir, relative), out_width,
-                           out_height, channels, values)
-        definition["albedo"] = relative
+            values, channel_count = _interleave(red, green, blue), 3
+        definition["albedo"] = self._write("albedo", definition, source, width,
+                                           height, channel_count, values)
+        self.log("    albedo %s <- %-32s %s (%s)"
+                 % (definition["id"], name, "grey" if grey else "rgb", origin))
+
+    def _build_normal(self, definition, source, origin):
+        try:
+            name, width, height, channels, fmt = self._sample("normal", source)
+        except Exception as exc:
+            self.log("    normal %s undecodable (%s)" % (definition["id"], exc))
+            return
+        red, green, blue, alpha = channels
+        if fmt == textures.FORMAT_BC3:
+            # Unity stores tangent space normals as DXT5nm: X lives in alpha,
+            # Y in green, and the colour channels carry no usable data.
+            x = [v / 127.5 - 1.0 for v in alpha]
+            y = [v / 127.5 - 1.0 for v in green]
+            z = [max(0.0, 1.0 - a * a - b * b) ** 0.5 for a, b in zip(x, y)]
+            red = [int((v * 0.5 + 0.5) * 255.0 + 0.5) for v in x]
+            green = [int((v * 0.5 + 0.5) * 255.0 + 0.5) for v in y]
+            blue = [int((v * 0.5 + 0.5) * 255.0 + 0.5) for v in z]
+        values = _interleave(red, green, blue)
+        definition["normal"] = self._write("normal", definition, source, width,
+                                           height, 3, values)
+        definition["normalStrength"] = 1.0
+        self.log("    normal %s <- %-32s (%s)" % (definition["id"], name, origin))
 
 
 def _vec(values, digits=6):
@@ -506,12 +770,16 @@ def collect_pieces(graph, hulls):
     return chosen
 
 
-def extract(bundle_path, out_dir, tex_size=512, log=None, max_bytes=None):
+def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
+            aa_dir=None, normals=True):
     log = log or Logger()
+    sizes = dict(DEFAULT_SIZES, **(sizes or {}))
     started = time.time()
-    for sub in ("mesh", "mask", "albedo"):
+    folders = ("mesh", "mask", "albedo", "normal")
+    for sub in folders:
         os.makedirs(os.path.join(out_dir, sub), exist_ok=True)
-    for sub, suffix in (("mesh", ".nlmesh"), ("mask", ".png"), ("albedo", ".png")):
+    for sub, suffix in (("mesh", ".nlmesh"), ("mask", ".png"),
+                        ("albedo", ".png"), ("normal", ".png")):
         folder = os.path.join(out_dir, sub)
         for name in os.listdir(folder):
             if name.endswith(suffix):
@@ -525,12 +793,26 @@ def extract(bundle_path, out_dir, tex_size=512, log=None, max_bytes=None):
         % (sf.unity_version, len(sf.types), len(sf.objects)))
     graph = hierarchy.SceneGraph(sf)
     hulls = hierarchy.load_hull_types(graph)
-    resource_stream = None
-    for node in bundle.nodes:
-        if node.path.lower().endswith(".ress"):
-            resource_stream = unityfs.NodeStream(bundle, node)
-            break
-    materials = MaterialBuilder(graph, out_dir, tex_size, resource_stream, log)
+    resource_stream = unityfs.resource_stream(bundle)
+    aa_catalog = None
+    pool = None
+    if aa_dir:
+        try:
+            aa_catalog = addressables.load_catalog(aa_dir)
+            pool = addressables.BundlePool(aa_catalog, log)
+            log("addressables: %s, %d assets in %d bundles"
+                % (aa_catalog.catalog_path, len(aa_catalog),
+                   len(aa_catalog.bundle_names)))
+        except Exception as exc:
+            log("addressables: %s: %s (falling back to bundle textures)"
+                % (type(exc).__name__, exc))
+            aa_catalog = None
+            pool = None
+    guid_tables, ship_roots = segment_textures(graph, aa_catalog, log)
+    materials = MaterialBuilder(graph, out_dir, sizes, resource_stream, log,
+                                catalog=aa_catalog, pool=pool,
+                                guid_tables=guid_tables, ship_roots=ship_roots,
+                                normals=normals)
     pieces = collect_pieces(graph, hulls)
     log("hull types: %d, unique pieces: %d" % (len(hulls), len(pieces)))
     builder = PieceBuilder(graph, out_dir, materials, log)
@@ -564,6 +846,10 @@ def extract(bundle_path, out_dir, tex_size=512, log=None, max_bytes=None):
     log("paintable materials: %d, fixed-colour props: %d %s"
         % (len(paintable_ids), len(materials.definitions) - len(paintable_ids),
            fixed_names))
+    log("texture slots: %s" % ", ".join(
+        "%s(%s)" % (slot, " ".join("%s=%d" % item for item in sorted(counts.items())))
+        for slot, counts in materials.texture_sources.items()))
+    log("shared texture files: %d" % materials.shared_pngs)
 
     # Every hull *body* material (the segment shells) must take the livery.
     # Node names alone are not enough: the LOD groups also exist for thrusters and
@@ -610,6 +896,7 @@ def extract(bundle_path, out_dir, tex_size=512, log=None, max_bytes=None):
                     unpainted.append(node["material"])
         container_surface[save_key] = {
             "materials": len(involved),
+            "ids": sorted(involved),
             "unpainted": sorted(set(unpainted)),
             "names": sorted(materials.names.get(m, m) for m in involved),
         }
@@ -650,7 +937,21 @@ def extract(bundle_path, out_dir, tex_size=512, log=None, max_bytes=None):
         "hullSurface": container_surface,
         "maskSources": dict(materials.mask_sources),
         "textureFailures": materials.failures,
+        "textureSizes": dict(sizes),
+        "textureSources": {slot: dict(counts)
+                           for slot, counts in materials.texture_sources.items()},
+        "sharedPngs": materials.shared_pngs,
+        "addressables": {
+            "catalog": aa_catalog.catalog_path if aa_catalog else "",
+            "assets": len(aa_catalog) if aa_catalog else 0,
+            "guidTables": len(guid_tables),
+            "shipRoots": dict(ship_roots),
+            "bundleFailures": [list(item) for item in
+                               (pool.failures if pool is not None else [])],
+        },
         "budgetBytes": max_bytes,
     }
+    if pool is not None:
+        pool.close()
     bundle.close()
     return catalog, stats

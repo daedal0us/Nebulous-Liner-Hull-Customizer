@@ -24050,7 +24050,9 @@
    "mask": "mask/0001.png",
    "maskChannel": "r",
    "maskInvert": true,
-   "trimBaked": false
+   "trimBaked": false,
+   "normal": "normal/0001.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0002",
@@ -24066,7 +24068,9 @@
    "mask": "mask/0002.png",
    "maskChannel": "r",
    "maskInvert": false,
-   "trimBaked": false
+   "trimBaked": false,
+   "normal": "normal/0002.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0003",
@@ -24098,7 +24102,9 @@
    "mask": "mask/0004.png",
    "maskChannel": "r",
    "maskInvert": true,
-   "trimBaked": false
+   "trimBaked": false,
+   "normal": "normal/0004.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0005",
@@ -24113,8 +24119,10 @@
    "albedoMix": 1.0,
    "mask": "mask/0005.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0005.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0006",
@@ -24130,7 +24138,9 @@
    "mask": "mask/0006.png",
    "maskChannel": "r",
    "maskInvert": true,
-   "trimBaked": false
+   "trimBaked": false,
+   "normal": "normal/0006.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0007",
@@ -24145,8 +24155,10 @@
    "albedoMix": 1.0,
    "mask": "mask/0007.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0007.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0008",
@@ -24161,8 +24173,10 @@
    "albedoMix": 1.0,
    "mask": "mask/0008.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0008.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0009",
@@ -24177,8 +24191,10 @@
    "albedoMix": 1.0,
    "mask": "mask/0009.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0009.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0010",
@@ -24193,8 +24209,10 @@
    "albedoMix": 1.0,
    "mask": "mask/0010.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0010.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0011",
@@ -24204,13 +24222,15 @@
     1.0,
     1.0
    ],
-   "albedo": "albedo/0011.png",
+   "albedo": "albedo/0010.png",
    "albedoMode": "multiply",
    "albedoMix": 1.0,
-   "mask": "mask/0011.png",
+   "mask": "mask/0010.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0010.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0012",
@@ -24226,7 +24246,9 @@
    "mask": "mask/0012.png",
    "maskChannel": "r",
    "maskInvert": true,
-   "trimBaked": false
+   "trimBaked": false,
+   "normal": "normal/0012.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0013",
@@ -24236,13 +24258,15 @@
     1.0,
     1.0
    ],
-   "albedo": "albedo/0013.png",
+   "albedo": "albedo/0012.png",
    "albedoMode": "multiply",
    "albedoMix": 1.0,
-   "mask": "mask/0013.png",
+   "mask": "mask/0012.png",
    "maskChannel": "r",
    "maskInvert": true,
-   "trimBaked": false
+   "trimBaked": false,
+   "normal": "normal/0012.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0014",
@@ -24257,8 +24281,10 @@
    "albedoMix": 1.0,
    "mask": "mask/0014.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0014.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0015",
@@ -24268,13 +24294,15 @@
     1.0,
     1.0
    ],
-   "albedo": "albedo/0015.png",
+   "albedo": "albedo/0014.png",
    "albedoMode": "multiply",
    "albedoMix": 1.0,
-   "mask": "mask/0015.png",
+   "mask": "mask/0014.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0014.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0016",
@@ -24284,13 +24312,15 @@
     1.0,
     1.0
    ],
-   "albedo": "albedo/0016.png",
+   "albedo": "albedo/0004.png",
    "albedoMode": "overlay",
    "albedoMix": 0.35,
-   "mask": "mask/0016.png",
+   "mask": "mask/0004.png",
    "maskChannel": "r",
    "maskInvert": true,
-   "trimBaked": false
+   "trimBaked": false,
+   "normal": "normal/0004.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0017",
@@ -24322,7 +24352,9 @@
    "mask": "mask/0018.png",
    "maskChannel": "r",
    "maskInvert": true,
-   "trimBaked": false
+   "trimBaked": false,
+   "normal": "normal/0018.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0019",
@@ -24332,13 +24364,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0019.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
+   "albedoMix": 1.0,
    "mask": "mask/0019.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0019.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0020",
@@ -24348,13 +24382,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0019.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
-   "mask": "mask/0020.png",
+   "albedoMix": 1.0,
+   "mask": "mask/0019.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0019.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0021",
@@ -24364,13 +24400,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0021.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
+   "albedoMix": 1.0,
    "mask": "mask/0021.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0021.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0022",
@@ -24380,13 +24418,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0021.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
-   "mask": "mask/0022.png",
+   "albedoMix": 1.0,
+   "mask": "mask/0021.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0021.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0023",
@@ -24396,13 +24436,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0023.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
+   "albedoMix": 1.0,
    "mask": "mask/0023.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0023.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0024",
@@ -24412,13 +24454,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0023.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
-   "mask": "mask/0024.png",
+   "albedoMix": 1.0,
+   "mask": "mask/0023.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0023.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0025",
@@ -24428,13 +24472,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0025.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
+   "albedoMix": 1.0,
    "mask": "mask/0025.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0025.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0026",
@@ -24444,13 +24490,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0026.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
+   "albedoMix": 1.0,
    "mask": "mask/0026.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0026.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0027",
@@ -24460,13 +24508,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0027.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
+   "albedoMix": 1.0,
    "mask": "mask/0027.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0027.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0028",
@@ -24476,13 +24526,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0028.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
+   "albedoMix": 1.0,
    "mask": "mask/0028.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0028.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0029",
@@ -24492,13 +24544,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0028.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
-   "mask": "mask/0029.png",
+   "albedoMix": 1.0,
+   "mask": "mask/0028.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0028.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0030",
@@ -24508,13 +24562,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0030.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
+   "albedoMix": 1.0,
    "mask": "mask/0030.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0030.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0031",
@@ -24524,13 +24580,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0030.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
-   "mask": "mask/0031.png",
+   "albedoMix": 1.0,
+   "mask": "mask/0030.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0030.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0032",
@@ -24540,13 +24598,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0032.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
+   "albedoMix": 1.0,
    "mask": "mask/0032.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0032.png",
+   "normalStrength": 1.0
   },
   {
    "id": "t:0033",
@@ -24556,13 +24616,15 @@
     1.0,
     1.0
    ],
-   "albedo": "",
+   "albedo": "albedo/0032.png",
    "albedoMode": "multiply",
-   "albedoMix": 0.0,
-   "mask": "mask/0033.png",
+   "albedoMix": 1.0,
+   "mask": "mask/0032.png",
    "maskChannel": "r",
-   "maskInvert": false,
-   "trimBaked": false
+   "maskInvert": true,
+   "trimBaked": false,
+   "normal": "normal/0032.png",
+   "normalStrength": 1.0
   }
  ]
 }

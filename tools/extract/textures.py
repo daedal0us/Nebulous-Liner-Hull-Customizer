@@ -116,20 +116,42 @@ def pick_mip(texture, max_size):
     return best
 
 
-def decode_mip(texture, level, resource_stream=None):
-    """Decode one mip level; returns (width, height, r, g, b, a bytearrays)."""
-    payload = texture.payload(resource_stream)
+def mip_offset(texture, level):
+    """(byte offset, width, height) of one mip level in the payload."""
     width, height = texture.width, texture.height
     offset = 0
-    for current in range(level):
+    for _ in range(level):
         offset += mip_size(texture.format, width, height)
         width = max(1, width // 2)
         height = max(1, height // 2)
+    return offset, width, height
+
+
+def decode_mip(texture, level, resource_stream=None):
+    """Decode one mip level; returns (width, height, r, g, b, a bytearrays).
+
+    Only the bytes of that level are read: a streamed 4096 px map has a 22 MiB
+    payload but its 512 px level is 128 KiB, and the extractor never needs more.
+    """
+    offset, width, height = mip_offset(texture, level)
     size = mip_size(texture.format, width, height)
-    if offset + size > len(payload):
-        raise TextureError("texture %r mip %d runs past its %d payload bytes"
-                           % (texture.name, level, len(payload)))
-    data = payload[offset:offset + size]
+    if texture.stream_size:
+        if resource_stream is None:
+            raise TextureError("texture %r is streamed but no .resS node was "
+                               "provided" % (texture.name,))
+        if offset == 0 and size == texture.stream_size:
+            data = texture.payload(resource_stream)
+        else:
+            data = resource_stream.read_at(texture.stream_offset + offset, size)
+        if len(data) != size:
+            raise TextureError("short read for streamed texture %r mip %d"
+                               % (texture.name, level))
+    else:
+        data = texture.image_data
+        if offset + size > len(data):
+            raise TextureError("texture %r mip %d runs past its %d payload bytes"
+                               % (texture.name, level, len(data)))
+        data = data[offset:offset + size]
     return decode_image(texture.format, width, height, data)
 
 
@@ -383,6 +405,75 @@ def write_png(path, width, height, channels, data):
     with open(path, "wb") as handle:
         handle.write(out)
     return len(out)
+
+
+def _paeth(left, up, upleft):
+    estimate = left + up - upleft
+    to_left = abs(estimate - left)
+    to_up = abs(estimate - up)
+    to_upleft = abs(estimate - upleft)
+    if to_left <= to_up and to_left <= to_upleft:
+        return left
+    return up if to_up <= to_upleft else upleft
+
+
+def read_png(path):
+    """(width, height, channels, pixels) of an 8 bit grey/RGB PNG."""
+    with open(path, "rb") as handle:
+        blob = handle.read()
+    if blob[:8] != b"\x89PNG\r\n\x1a\n":
+        raise TextureError("not a PNG: %r" % (path,))
+    width = height = channels = 0
+    compressed = bytearray()
+    pos = 8
+    while pos + 8 <= len(blob):
+        length = struct.unpack_from(">I", blob, pos)[0]
+        kind = blob[pos + 4:pos + 8]
+        payload = blob[pos + 8:pos + 8 + length]
+        pos += 12 + length
+        if kind == b"IHDR":
+            width, height, depth, color_type = struct.unpack_from(">IIBB", payload, 0)
+            if depth != 8 or color_type not in (0, 2):
+                raise TextureError("%r is %d bit, colour type %d (only 8 bit "
+                                   "grey/RGB are supported)" % (path, depth,
+                                                                color_type))
+            channels = 1 if color_type == 0 else 3
+        elif kind == b"IDAT":
+            compressed += payload
+        elif kind == b"IEND":
+            break
+    if not width or not height or not channels:
+        raise TextureError("%r has no usable IHDR" % (path,))
+    raw = zlib.decompress(bytes(compressed))
+    stride = width * channels
+    pixels = bytearray(stride * height)
+    previous = bytearray(stride)
+    pos = 0
+    for row in range(height):
+        filter_type = raw[pos]
+        pos += 1
+        line = bytearray(raw[pos:pos + stride])
+        pos += stride
+        if filter_type == 1:
+            for i in range(channels, stride):
+                line[i] = (line[i] + line[i - channels]) & 0xFF
+        elif filter_type == 2:
+            for i in range(stride):
+                line[i] = (line[i] + previous[i]) & 0xFF
+        elif filter_type == 3:
+            for i in range(stride):
+                left = line[i - channels] if i >= channels else 0
+                line[i] = (line[i] + ((left + previous[i]) >> 1)) & 0xFF
+        elif filter_type == 4:
+            for i in range(stride):
+                left = line[i - channels] if i >= channels else 0
+                upleft = previous[i - channels] if i >= channels else 0
+                line[i] = (line[i] + _paeth(left, previous[i], upleft)) & 0xFF
+        elif filter_type != 0:
+            raise TextureError("%r uses PNG filter %d" % (path, filter_type))
+        pixels[row * stride:(row + 1) * stride] = line
+        previous = line
+    return width, height, channels, pixels
 
 
 def read_png_size(path):

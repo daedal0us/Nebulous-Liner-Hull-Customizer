@@ -393,6 +393,14 @@ class NodeStream(io.RawIOBase):
         return self.node.size
 
 
+def resource_stream(bundle):
+    """The NodeStream of a bundle's .resS node (streamed texture data)."""
+    for node in bundle.nodes:
+        if node.path.lower().endswith(".ress"):
+            return NodeStream(bundle, node)
+    return None
+
+
 def open_bundle(path):
     bundle = Bundle(path)
     ok, detail = bundle.check_layout()

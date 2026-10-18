@@ -287,55 +287,127 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                      ", ".join((container or {}).get("names", [])[:4]),
                      "ok" if not empty_base else str(empty_base[:3])))
 
-    # A real (authored) stripe mask is far bigger than the 4x4 placeholder.
-    real_masks = []
-    placeholder_masks = []
-    polarity_bad = []
+    # Every hull body material must carry authored maps: the addressable
+    # texture bundles hold the 4096 px sources, so a 4x4 placeholder means the
+    # GUID / folder resolution failed for that material.
+    surfaces = stats.get("hullSurface") or {}
+    by_id = {material["id"]: material for material in materials}
+    texture_files = {}
+    placeholders = set()
+    unreadable = []
+    dark_ratios = []
     for material in materials:
-        relative = material["mask"]
-        if not relative:
-            continue
-        size = os.path.getsize(os.path.join(out_dir, relative))
-        if size > 200:
-            real_masks.append(material)
-            if material["maskChannel"] != "r" or not material["maskInvert"]:
-                polarity_bad.append(material["id"])
-        else:
-            placeholder_masks.append(material)
-            if material["maskInvert"]:
-                polarity_bad.append(material["id"] + " placeholder inverted")
-    report.check("hull materials carry authored stripe masks",
-                 len(real_masks) >= 6 and not polarity_bad,
-                 "%d authored + %d placeholder, channel/polarity %s"
-                 % (len(real_masks), len(placeholder_masks),
-                    "ok" if not polarity_bad else "; ".join(polarity_bad[:3])))
-    missing_files = []
-    for material in materials:
-        for field in ("mask", "albedo"):
-            relative = material[field]
+        for kind in ("albedo", "mask", "normal"):
+            relative = material.get(kind) or ""
             if not relative:
                 continue
             path = os.path.join(out_dir, relative)
             if not os.path.exists(path):
-                missing_files.append(relative)
+                unreadable.append("%s is missing" % relative)
                 continue
-            width, height, depth, color_type = textures.read_png_size(path)
-            if width <= 0 or height <= 0 or depth != 8:
-                missing_files.append("%s %dx%d depth %d"
-                                     % (relative, width, height, depth))
-    png_files = len([m for m in materials if m["mask"]]) + len(with_albedo)
-    report.check("mask/albedo PNGs exist and are 8 bit",
-                 not missing_files,
-                 "; ".join(missing_files[:3]) if missing_files else
-                 "%d files, %d materials" % (png_files, len(materials)))
+            try:
+                width, height, channels, pixels = textures.read_png(path)
+            except Exception as exc:
+                unreadable.append("%s: %s" % (relative, exc))
+                continue
+            if channels not in (1, 3):
+                unreadable.append("%s has %d channels" % (relative, channels))
+            texture_files.setdefault(kind, set()).add(relative)
+            if width <= 4 and height <= 4:
+                placeholders.add((material["id"], kind))
+                continue
+            if kind == "mask":
+                luminance = pixels[::channels]
+                dark = sum(1 for value in luminance if value < 128) / float(len(luminance))
+                dark_ratios.append((material["id"], dark))
+
+    hull_materials = []
+    unresolved = []
+    for hull_id in HULL_IDS:
+        for material_id in (surfaces.get(hull_id) or {}).get("ids") or []:
+            material = by_id.get(material_id)
+            if material is None:
+                unresolved.append("%s: %s is not in the catalog"
+                                  % (hull_id, material_id))
+            elif material not in hull_materials:
+                hull_materials.append(material)
+    hull_bad = [(material["id"], kind) for material in hull_materials
+                for kind in ("albedo", "mask")
+                if not material.get(kind)
+                or (material["id"], kind) in placeholders]
+    report.check("every hull body material has a real albedo and mask",
+                 bool(hull_materials) and not hull_bad and not unresolved,
+                 "%d hull materials, %d placeholder/missing %s%s"
+                 % (len(hull_materials), len(hull_bad),
+                    ", ".join("%s %s" % item for item in hull_bad[:4]),
+                    "" if not unresolved else "; missing " + unresolved[0]))
+    bad_dark = [item for item in dark_ratios if not 0.2 < item[1] < 0.8]
+    ratio_span = "%.2f-%.2f" % (min(item[1] for item in dark_ratios),
+                                max(item[1] for item in dark_ratios)) \
+        if dark_ratios else "no masks"
+    report.check("hull mask dark ratio within 0.2-0.8",
+                 bool(dark_ratios) and not bad_dark,
+                 "%d masks, %s%s" % (len(dark_ratios), ratio_span,
+                                     "" if not bad_dark else
+                                     "; out of range " + str(bad_dark[:3])))
+
+    placeholder_masks = {item[0] for item in placeholders if item[1] == "mask"}
+    polarity_bad = []
+    for material in materials:
+        if not material.get("mask"):
+            continue
+        if material["id"] in placeholder_masks:
+            if material["maskInvert"]:
+                polarity_bad.append(material["id"] + " placeholder inverted")
+        elif material["maskChannel"] != "r" or not material["maskInvert"]:
+            polarity_bad.append(material["id"])
+    report.check("mask polarity is (1 - mask) on authored masks",
+                 not polarity_bad,
+                 "%d masks, channel/polarity %s"
+                 % (len(materials), "ok" if not polarity_bad
+                    else "; ".join(polarity_bad[:3])))
+
+    hull_with_normal = [material for material in hull_materials
+                        if material.get("normal")]
+    coverage = (len(hull_with_normal) / float(len(hull_materials))
+                if hull_materials else 0.0)
+    report.check("hull normal map coverage >= 90%", coverage >= 0.9,
+                 "%d/%d (%.0f%%)" % (len(hull_with_normal), len(hull_materials),
+                                    coverage * 100.0))
+    report.check("every referenced PNG decodes as 8 bit", not unreadable,
+                 "; ".join(unreadable[:3]) if unreadable else
+                 "%d files, %d materials"
+                 % (sum(len(files) for files in texture_files.values()),
+                    len(materials)))
+    texture_counts = {}
+    for kind in ("albedo", "mask", "normal"):
+        files = texture_files.get(kind) or set()
+        size = sum(os.path.getsize(os.path.join(out_dir, name)) for name in files)
+        texture_counts[kind] = (len(files), size)
+        print("     %-6s %3d files %8.2f KiB" % (kind, len(files), size / 1024.0),
+              file=stream)
 
     # --- volume ----------------------------------------------------------
     total = 0
+    category_bytes = {}
     for root, _, files in os.walk(out_dir):
+        category = os.path.basename(root) or "."
         for name in files:
-            total += os.path.getsize(os.path.join(root, name))
-    limit = max_bytes if max_bytes else 40 * 1024 * 1024
+            size = os.path.getsize(os.path.join(root, name))
+            total += size
+            category_bytes[category] = category_bytes.get(category, 0) + size
+    limit = max_bytes if max_bytes else 60 * 1024 * 1024
+    breakdown = ", ".join("%s %.1f" % (name, category_bytes[name] / 1048576.0)
+                          for name in sorted(category_bytes))
     report.check("assets/hulls within size budget", total <= limit,
-                 "%.2f MiB / %.2f MiB" % (total / 1048576.0, limit / 1048576.0))
+                 "%.2f MiB / %.2f MiB (%s)"
+                 % (total / 1048576.0, limit / 1048576.0, breakdown))
     return report, {"meshFiles": mesh_files, "vertices": total_vertices,
-                    "textureRate": round(rate, 4), "totalBytes": total}
+                    "textureRate": round(rate, 4), "totalBytes": total,
+                    "categoryBytes": category_bytes,
+                    "textureCounts": {kind: counts[0]
+                                      for kind, counts in texture_counts.items()},
+                    "maskDark": [(material_id, round(value, 3))
+                                 for material_id, value in dark_ratios],
+                    "normalCoverage": round(coverage, 3),
+                    "hullMaterials": len(hull_materials)}
