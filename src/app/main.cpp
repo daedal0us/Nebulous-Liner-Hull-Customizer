@@ -61,6 +61,10 @@ int main(int argc, char *argv[])
     if (!shipIndex.isEmpty())
         window.selectShipByIndex(shipIndex.toInt());
 
+    const QString language = argumentValue(args, QStringLiteral("--language"));
+    if (!language.isEmpty() && !window.applyLanguageByName(language))
+        return 2;
+
     const QString debugView = argumentValue(args, QStringLiteral("--debug-view"));
     if (!debugView.isEmpty())
         window.setDebugViewName(debugView);

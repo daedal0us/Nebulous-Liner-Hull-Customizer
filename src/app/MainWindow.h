@@ -33,6 +33,7 @@ public:
 
     bool openFleet(const QString &path);
     void selectShipByIndex(int row);
+    bool applyLanguageByName(const QString &name);
     void setDebugViewName(const QString &name);
     QString debugRenderLegend() const;
     QString debugLayoutSummary() const;

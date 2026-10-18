@@ -197,6 +197,10 @@ void MainWindow::buildUi()
 
 void MainWindow::buildMenus()
 {
+    // The menu bar is rebuilt on every language switch, so any list of actions collected
+    // from the old menus has to be dropped here: the moved-from pointers are dangling and
+    // the retranslation would no longer match the rebuilt actions.
+    m_languageActions.clear();
     auto *toolbar = addToolBar(QStringLiteral("main"));
     toolbar->setObjectName(QStringLiteral("mainToolBar"));
 
@@ -286,10 +290,20 @@ void MainWindow::retranslateMenus()
     m_languageMenu->setTitle(tr("&Language"));
     m_helpMenu->setTitle(tr("&Help"));
     m_aboutAction->setText(tr("&About NLHC"));
-    if (m_languageActions.size() == 3) {
-        m_languageActions[0]->setText(tr("System default"));
-        m_languageActions[1]->setText(tr("English"));
-        m_languageActions[2]->setText(QStringLiteral("中文"));
+    // Driven by the language each action carries, so the order and count cannot drift out of
+    // sync with what buildMenus() created.
+    for (QAction *action : m_languageActions) {
+        switch (i18n::Language(action->data().toInt())) {
+        case i18n::Language::English:
+            action->setText(QStringLiteral("English"));
+            break;
+        case i18n::Language::Chinese:
+            action->setText(QStringLiteral("中文"));
+            break;
+        default:
+            action->setText(tr("System default"));
+            break;
+        }
     }
     if (m_diagnosticDock)
         m_diagnosticDock->setWindowTitle(tr("Diagnostics"));
@@ -529,6 +543,19 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
     applySplitterRatio();
+}
+
+bool MainWindow::applyLanguageByName(const QString &name)
+{
+    i18n::Language language = i18n::Language::System;
+    if (name == QLatin1String("en"))
+        language = i18n::Language::English;
+    else if (name == QLatin1String("zh"))
+        language = i18n::Language::Chinese;
+    else if (name != QLatin1String("system"))
+        return false;
+    applyLanguage(language);
+    return true;
 }
 
 void MainWindow::setDebugViewName(const QString &name)
