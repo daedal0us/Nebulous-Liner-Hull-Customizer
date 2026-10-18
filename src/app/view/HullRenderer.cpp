@@ -84,6 +84,43 @@ uniform float uMetallic;
 uniform float uSmoothness;
 uniform float uMaskKeep;
 
+uniform bool uCamoPaint;
+uniform vec3 uCamoOffset;
+uniform float uCamoScale;
+uniform float uCamoSplit;
+
+vec3 hash33(vec3 p)
+{
+    p = vec3(dot(p, vec3(127.1, 311.7, 74.7)),
+             dot(p, vec3(269.5, 183.3, 246.1)),
+             dot(p, vec3(113.5, 271.9, 124.6)));
+    return fract(sin(p) * 43758.5453123);
+}
+
+// Value of the cellular field at p. The game paints a per-ship camouflage field, which is
+// why the boundary between the two paint colours wanders across panels instead of following
+// the stripe mask.
+float camoCell(vec3 p)
+{
+    vec3 base = floor(p);
+    vec3 here = fract(p);
+    float best = 1e9;
+    vec3 pick = base;
+    for (int z = -1; z <= 1; ++z) {
+        for (int y = -1; y <= 1; ++y) {
+            for (int x = -1; x <= 1; ++x) {
+                vec3 cell = vec3(float(x), float(y), float(z));
+                float d = length(cell + hash33(base + cell) - here);
+                if (d < best) {
+                    best = d;
+                    pick = base + cell;
+                }
+            }
+        }
+    }
+    return hash33(pick).x;
+}
+
 uniform float uAlbedoMean;      // luminance average of the albedo, used to keep paint brightness
 uniform bool uHasBare;          // louvred vent panels painted by the exporter
 uniform sampler2D uBare;
@@ -178,7 +215,13 @@ void main()
         // Livery surfaces: the paint colour decides the hue, the albedo only modulates it.
         // Dividing by the texture mean keeps the paint at its authored brightness instead of
         // darkening every surface by the average of the detail map.
-        vec3 painted = mix(uBaseColor.rgb, uTrimColor.rgb, trim);
+        vec3 painted;
+        if (uCamoPaint) {
+            float camo = step(uCamoSplit, camoCell(vWorld * uCamoScale + uCamoOffset));
+            painted = mix(uBaseColor.rgb, uTrimColor.rgb, camo);
+        } else {
+            painted = mix(uBaseColor.rgb, uTrimColor.rgb, trim);
+        }
         // The hull atlas carries near-white panels (vent grilles, radiator stripes) that the game
         // leaves unpainted. Their albedo is the colour, so blend it back over the paint.
         float albedoLuma24 = dot(albedoSample, vec3(0.2990, 0.5870, 0.1140));
@@ -572,7 +615,11 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         program.setUniformValue("uDecal", 3);
         program.setUniformValue("uMaskKeep",
                                 material && material->maskMode == QLatin1String("keep") ? 1.0f : 0.0f);
-        program.setUniformValue("uMetallic", material ? material->metallic : 0.0f);
+        program.setUniformValue("uCamoPaint", style.camoPaint);
+    program.setUniformValue("uCamoOffset", style.camoOffset);
+    program.setUniformValue("uCamoScale", style.camoScale);
+    program.setUniformValue("uCamoSplit", style.camoSplit);
+    program.setUniformValue("uMetallic", material ? material->metallic : 0.0f);
         program.setUniformValue("uSmoothness", material ? material->smoothness : 0.5f);
         if (hasDecal) {
             glActiveTexture(GL_TEXTURE3);

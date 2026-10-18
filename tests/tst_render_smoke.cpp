@@ -36,6 +36,32 @@ double foregroundRatio(const QImage &image, const QVector<QColor> &backgrounds)
     return double(hits) / double(rgb.width() * rgb.height());
 }
 
+// Share of the lit pixels that lean warm (trim) and cool (base). The livery is a camouflage
+// field, so a correct render carries both palette colours instead of one dominant one.
+QPair<double, double> warmCoolShare(const QImage &image)
+{
+    const QImage rgb = image.convertToFormat(QImage::Format_RGB32);
+    qint64 warm = 0;
+    qint64 cool = 0;
+    qint64 lit = 0;
+    for (int y = 0; y < rgb.height(); ++y) {
+        const QRgb *line = reinterpret_cast<const QRgb *>(rgb.constScanLine(y));
+        for (int x = 0; x < rgb.width(); ++x) {
+            const QColor pixel(line[x]);
+            if (pixel.lightness() < 40)
+                continue;
+            ++lit;
+            if (pixel.red() > pixel.blue() + 20)
+                ++warm;
+            else if (pixel.blue() > pixel.red() + 20)
+                ++cool;
+        }
+    }
+    if (lit == 0)
+        return {0.0, 0.0};
+    return {double(warm) / double(lit), double(cool) / double(lit)};
+}
+
 QColor averageColor(const QImage &image)
 {
     const QImage rgb = image.convertToFormat(QImage::Format_RGB32);
@@ -79,7 +105,9 @@ private slots:
 
         const QColor average = averageColor(image);
         QVERIFY(average.isValid());
-        QVERIFY(average.blue() >= average.red());
+        const QPair<double, double> share = warmCoolShare(image);
+        QVERIFY2(share.first > 0.10, qPrintable(QStringLiteral("warm share %1").arg(share.first)));
+        QVERIFY2(share.second > 0.10, qPrintable(QStringLiteral("cool share %1").arg(share.second)));
     }
 
     void baseColorDrivesPixels()

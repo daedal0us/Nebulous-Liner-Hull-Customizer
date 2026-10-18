@@ -653,6 +653,11 @@ void MainWindow::refreshEditor()
     if (config)
         m_editor->setConfig(*config);
     m_editor->setEditable(ship.editable);
+    if (config) {
+        RenderStyle style = m_viewport->style();
+        style.camoOffset = config->textureVariation;
+        m_viewport->setStyle(style);
+    }
     if (config)
         m_stylePanel->setHullTint(config->hullTint);
     if (config)
