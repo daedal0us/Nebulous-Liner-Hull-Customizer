@@ -16,6 +16,7 @@ class TstPackage : public QObject
 
 private slots:
     void initTestCase();
+    void cleanupTestCase();
     void loadsMockCatalog();
     void resolvesLookups();
     void acceptsEmptyCatalog();
@@ -37,7 +38,7 @@ private:
     QString mockRoot() const { return m_dir.filePath(QStringLiteral("package")); }
     QString scratchDir(const QString &name);
 
-    QTemporaryDir m_dir{QDir::current().absoluteFilePath(QStringLiteral("nlhc-package-XXXXXX"))};
+    QTemporaryDir m_dir{nlhc::test::scratchTemplate(QStringLiteral("nlhc-package"))};
 };
 
 QString TstPackage::scratchDir(const QString &name)
@@ -290,6 +291,13 @@ void TstPackage::collectsWarnings()
             found = true;
     }
     QVERIFY2(found, qPrintable(warnings.join(QStringLiteral("; "))));
+}
+
+void TstPackage::cleanupTestCase()
+{
+    // The scratch dir lives under <build>/test-tmp; removing it here keeps even an
+    // interrupted run from leaving a directory behind.
+    QDir(m_dir.path()).removeRecursively();
 }
 
 QTEST_GUILESS_MAIN(TstPackage)

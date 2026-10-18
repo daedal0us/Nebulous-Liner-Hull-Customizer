@@ -5,6 +5,7 @@
 
 #include <QByteArray>
 #include <QColor>
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -22,6 +23,21 @@
 #include "nlhc/fleet/HullConfig.h"
 
 namespace nlhc::test {
+
+// Scratch area for the test suites. %TEMP% is not usable in this environment and the source
+// directory must stay clean, so everything lives under <build>/test-tmp.
+inline QString scratchRoot()
+{
+    const QString root =
+        QDir(QCoreApplication::applicationDirPath()).absoluteFilePath(QStringLiteral("../test-tmp"));
+    QDir().mkpath(root);
+    return QDir::cleanPath(root);
+}
+
+inline QString scratchTemplate(const QString &name)
+{
+    return QDir(scratchRoot()).absoluteFilePath(name + QStringLiteral("-XXXXXX"));
+}
 
 inline QByteArray onePixelPng()
 {

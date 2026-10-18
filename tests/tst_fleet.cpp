@@ -65,6 +65,7 @@ class TstFleet : public QObject
 
 private slots:
     void initTestCase();
+    void cleanupTestCase();
     void loadsBulkSample();
     void loadsContainerSample();
     void readsHullConfigDetails();
@@ -81,7 +82,7 @@ private slots:
 private:
     void writeFleet(const QString &path, const QString &xml);
 
-    QTemporaryDir m_dir{QDir::current().absoluteFilePath(QStringLiteral("nlhc-fleet-XXXXXX"))};
+    QTemporaryDir m_dir{nlhc::test::scratchTemplate(QStringLiteral("nlhc-fleet"))};
     QString m_root;
 };
 
@@ -440,6 +441,13 @@ void TstFleet::followsAttachedPackage()
     QVERIFY(document.ship(0).readOnlyReason.isEmpty());
     QVERIFY(!document.ship(1).editable);
     QVERIFY(document.ship(1).readOnlyReason.contains(QStringLiteral("Some/Other Hull")));
+}
+
+void TstFleet::cleanupTestCase()
+{
+    // The scratch dir lives under <build>/test-tmp; removing it here keeps even an
+    // interrupted run from leaving a directory behind.
+    QDir(m_dir.path()).removeRecursively();
 }
 
 QTEST_GUILESS_MAIN(TstFleet)

@@ -37,6 +37,7 @@ class TstValidate : public QObject
 
 private slots:
     void initTestCase();
+    void cleanupTestCase();
 
     // One test per row of the game-side tolerance table.
     void missingHullConfigIsReported();
@@ -58,7 +59,7 @@ private slots:
 private:
     QString writeFleet(const QString &name, const QString &xml) const;
 
-    QTemporaryDir m_dir{QDir::current().absoluteFilePath(QStringLiteral("nlhc-validate-XXXXXX"))};
+    QTemporaryDir m_dir{nlhc::test::scratchTemplate(QStringLiteral("nlhc-validate"))};
     HullPackage m_package;
 };
 
@@ -348,6 +349,13 @@ void TstValidate::describeDiagnosticIsHumanReadable()
         QVERIFY2(!describeDiagnostic(each).isEmpty(), code);
         QVERIFY2(!describeDiagnostic(each).contains(QString::fromLatin1(code)), code);
     }
+}
+
+void TstValidate::cleanupTestCase()
+{
+    // The scratch dir lives under <build>/test-tmp; removing it here keeps even an
+    // interrupted run from leaving a directory behind.
+    QDir(m_dir.path()).removeRecursively();
 }
 
 QTEST_GUILESS_MAIN(TstValidate)

@@ -57,6 +57,7 @@ class TstAssembler : public QObject
 
 private slots:
     void initTestCase();
+    void cleanupTestCase();
     void assemblesThreeSegmentsByTranslation();
     void centresAssemblyOnZ();
     void reportsUnknownHullType();
@@ -71,7 +72,7 @@ private slots:
 private:
     const MeshData *mesh(const char *id) const { return m_package.mesh(QString::fromLatin1(id), nullptr); }
 
-    QTemporaryDir m_dir{QDir::current().absoluteFilePath(QStringLiteral("nlhc-assembler-XXXXXX"))};
+    QTemporaryDir m_dir{nlhc::test::scratchTemplate(QStringLiteral("nlhc-assembler"))};
     HullPackage m_package;
     HullAssembler m_assembler;
 };
@@ -277,6 +278,13 @@ void TstAssembler::reportsSuperstructureOutOfRange()
     QCOMPARE(countCode(result.diagnostics, diag::SecondarySegmentOutOfRange), 1);
     QCOMPARE(countCode(result.diagnostics, diag::SecondarySnapOutOfRange), 1);
     QCOMPARE(countCode(result.diagnostics, diag::UnknownSecondary), 1);
+}
+
+void TstAssembler::cleanupTestCase()
+{
+    // The scratch dir lives under <build>/test-tmp; removing it here keeps even an
+    // interrupted run from leaving a directory behind.
+    QDir(m_dir.path()).removeRecursively();
 }
 
 QTEST_GUILESS_MAIN(TstAssembler)
