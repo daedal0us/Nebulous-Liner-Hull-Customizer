@@ -8,7 +8,7 @@
 
 namespace nlhc {
 
-struct Bounds
+struct NLHC_CORE_EXPORT Bounds
 {
     QVector3D minimum;
     QVector3D maximum;
@@ -21,7 +21,7 @@ struct Bounds
     float radius() const;
 };
 
-struct MeshData
+struct NLHC_CORE_EXPORT MeshData
 {
     QVector<QVector3D> positions;
     QVector<QVector3D> normals;

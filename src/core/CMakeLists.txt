@@ -1,7 +1,22 @@
 qt_add_library(NLHCCore SHARED
     include/nlhc/Export.h
     include/nlhc/Version.h
+    include/nlhc/Diagnostics.h
+    include/nlhc/asset/HullPackage.h
+    include/nlhc/asset/MeshData.h
+    include/nlhc/asset/Piece.h
+    include/nlhc/fleet/FleetDocument.h
+    include/nlhc/fleet/HullConfig.h
+    include/nlhc/fleet/ShipRecord.h
+    include/nlhc/hull/HullAssembler.h
+    include/nlhc/hull/Validate.h
     src/Version.cpp
+    src/Diagnostics.cpp
+    src/MeshData.cpp
+    src/asset/HullPackage.cpp
+    src/fleet/FleetDocument.cpp
+    src/hull/HullAssembler.cpp
+    src/hull/Validate.cpp
 )
 target_include_directories(NLHCCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(NLHCCore PRIVATE Qt6::Core Qt6::Gui Qt6::Xml)

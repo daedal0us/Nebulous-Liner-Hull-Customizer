@@ -1,0 +1,448 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/commonstring.rs`."><title>commonstring.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="/-/rustdoc.static/${f}">`).join(""))</script><link rel="stylesheet" href="/-/rustdoc.static/normalize-9960930a.css"><link rel="stylesheet" href="/-/static/vendored.css?0-0-0-4259a798bb58835b634f4d75c4481f2f17bdb1d5-2026-10-17" media="all" /><link rel="stylesheet" href="/-/rustdoc.static/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="/-/rustdoc.static/" data-current-crate="urex" data-themes="" data-resource-suffix="-20261012-1.101.0-nightly-e9bbadf68" data-rustdoc-version="1.101.0-nightly (e9bbadf68 2026-10-12)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="/-/rustdoc.static/storage-41dd4d93.js"></script><script defer src="/-/rustdoc.static/src-script-813739b1.js"></script><script defer src="../../src-files-20261012-1.101.0-nightly-e9bbadf68.js"></script><script defer src="/-/rustdoc.static/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="/-/rustdoc.static/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="/-/rustdoc.static/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="/-/rustdoc.static/favicon-044be391.svg"><link rel="stylesheet" href="/-/static/rustdoc-2025-08-20.css?0-0-0-4259a798bb58835b634f4d75c4481f2f17bdb1d5-2026-10-17" media="all" /><link rel="stylesheet" href="/-/static/font-awesome.css?0-0-0-4259a798bb58835b634f4d75c4481f2f17bdb1d5-2026-10-17" media="all" />
+
+<link rel="search" href="/-/static/opensearch.xml" type="application/opensearchdescription+xml" title="Docs.rs" />
+
+<script type="text/javascript">(function() {
+    function applyTheme(theme) {
+        if (theme) {
+            document.documentElement.dataset.docsRsTheme = theme;
+        }
+    }
+
+    window.addEventListener("storage", ev => {
+        if (ev.key === "rustdoc-theme") {
+            applyTheme(ev.newValue);
+        }
+    });
+
+    // see ./storage-change-detection.html for details
+    window.addEventListener("message", ev => {
+        if (ev.data && ev.data.storage && ev.data.storage.key === "rustdoc-theme") {
+            applyTheme(ev.data.storage.value);
+        }
+    });
+
+    applyTheme(window.localStorage.getItem("rustdoc-theme"));
+})();</script></head><body class="rustdoc-page">
+<div class="nav-container">
+    <div class="container">
+        <div class="pure-menu pure-menu-horizontal" role="navigation" aria-label="Main navigation">
+            <form action="/releases/search"
+                  method="GET"
+                  id="nav-search-form"
+                  class="landing-search-form-nav  ">
+
+                
+                <a href="/" class="pure-menu-heading pure-menu-link docsrs-logo" aria-label="Docs.rs">
+                    <span title="Docs.rs"><span class="fa fa-solid fa-cubes " aria-hidden="true"></span></span>
+                    <span class="title">Docs.rs</span>
+                </a><ul class="pure-menu-list">
+    <script id="crate-metadata" type="application/json">
+        
+        {
+            "name": "urex",
+            "version": "0.0.3"
+        }
+    </script><li class="pure-menu-item pure-menu-has-children crate-dropdown">
+            <a href="#" class="pure-menu-link crate-name" title="wip UnityRustExtractor and patcher">
+                <span class="fa fa-solid fa-cube " aria-hidden="true"></span>
+                <span class="title">urex-0.0.3</span>
+            </a><div class="pure-menu-children package-details-menu">
+                
+                <ul class="pure-menu-list menu-item-divided">
+                    <li class="pure-menu-heading" id="crate-title">
+                        urex 0.0.3
+                        <span id="clipboard" class="svg-clipboard" title="Copy crate name and version information"></span>
+                    </li><li class="pure-menu-item">
+                        <a href="/crate/urex/0.0.3" class="pure-menu-link description" title="See urex in docs.rs">
+                            <span class="fa fa-solid fa-cube " aria-hidden="true"></span> Docs.rs crate page
+                        </a>
+                    </li><li class="pure-menu-item">
+                            <span class="pure-menu-link description license"><span class="fa fa-solid fa-scale-unbalanced-flip " aria-hidden="true"></span>
+                            <a href="https://spdx.org/licenses/MIT" class="pure-menu-sublink">MIT</a> OR <a href="https://spdx.org/licenses/Apache-2.0" class="pure-menu-sublink">Apache-2.0</a></span>
+                        </li><li class="pure-menu-item">
+                            <span class="pure-menu-link description" title="Built with rustc 1.101.0-nightly (e9bbadf68 2026-10-12)">
+                                <span class="fa fa-solid fa-gears " aria-hidden="true"></span> 13 October 2026
+                            </span>
+                        </li></ul>
+
+                <div class="pure-g menu-item-divided">
+                    <div class="pure-u-1-2 right-border">
+                        <ul class="pure-menu-list">
+                            <li class="pure-menu-heading">Links</li>
+
+                            <li class="pure-menu-item">
+                                    <a href="https://crates.io/crates/urex" class="pure-menu-link">
+                                        <span class="fa fa-solid fa-house " aria-hidden="true"></span> Homepage
+                                    </a>
+                                </li><li class="pure-menu-item">
+                                    <a href="https://github.com/UnityRustEXtractor/urex" class="pure-menu-link">
+                                        <span class="fa fa-solid fa-code-branch " aria-hidden="true"></span> Repository
+                                    </a>
+                                </li><li class="pure-menu-item">
+                                <a href="https://crates.io/crates/urex" class="pure-menu-link" title="See urex in crates.io">
+                                    <span class="fa fa-solid fa-cube " aria-hidden="true"></span> crates.io
+                                </a>
+                            </li>
+
+                            
+                            <li class="pure-menu-item">
+                                <a href="/crate/urex/0.0.3/source/" title="Browse source of urex-0.0.3" class="pure-menu-link">
+                                    <span class="fa fa-solid fa-folder-open " aria-hidden="true"></span> Source
+                                </a>
+                            </li>
+                        </ul>
+                    </div><div class="pure-u-1-2">
+                        <ul class="pure-menu-list" id="topbar-owners">
+                            <li class="pure-menu-heading">Owners</li><li class="pure-menu-item">
+                                    <a href="https://crates.io/users/jakobhellermann" class="pure-menu-link">
+                                        <span class="fa fa-solid fa-user " aria-hidden="true"></span> jakobhellermann
+                                    </a>
+                                </li><li class="pure-menu-item">
+                                    <a href="https://crates.io/users/K0lb3" class="pure-menu-link">
+                                        <span class="fa fa-solid fa-user " aria-hidden="true"></span> K0lb3
+                                    </a>
+                                </li></ul>
+                    </div>
+                </div>
+
+                <div class="pure-g menu-item-divided">
+                    <div class="pure-u-1-2 right-border">
+                        <ul class="pure-menu-list">
+                            <li class="pure-menu-heading">Dependencies</li>
+
+                            
+                            <li class="pure-menu-item">
+                                <div class="pure-menu pure-menu-scrollable sub-menu" tabindex="-1">
+                                    <ul class="pure-menu-list">
+                                        <li class="pure-menu-item"><a href="/aes/^0.8.2/" class="pure-menu-link">
+                aes ^0.8.2
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/bitflags/^1.3.2/" class="pure-menu-link">
+                bitflags ^1.3.2
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/brotli/^3.3.4/" class="pure-menu-link">
+                brotli ^3.3.4
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/byteorder/^1.4.3/" class="pure-menu-link">
+                byteorder ^1.4.3
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/cbc/^0.1.2/" class="pure-menu-link">
+                cbc ^0.1.2
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/lazy_static/^1.4.0/" class="pure-menu-link">
+                lazy_static ^1.4.0
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/libflate/^1.3.0/" class="pure-menu-link">
+                libflate ^1.3.0
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/lz4_flex/^0.10/" class="pure-menu-link">
+                lz4_flex ^0.10
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/lzma-rs/^0.3.0/" class="pure-menu-link">
+                lzma-rs ^0.3.0
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/num_enum/^0.5.11/" class="pure-menu-link">
+                num_enum ^0.5.11
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/paste/^1.0.12/" class="pure-menu-link">
+                paste ^1.0.12
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/rmp/^0.8/" class="pure-menu-link">
+                rmp ^0.8
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/rmp-serde/^1.1.1/" class="pure-menu-link">
+                rmp-serde ^1.1.1
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/serde/^1.0.164/" class="pure-menu-link">
+                serde ^1.0.164
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/serde_json/^1.0/" class="pure-menu-link">
+                serde_json ^1.0
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/serde_yaml/^0.9/" class="pure-menu-link">
+                serde_yaml ^0.9
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="pure-u-1-2">
+                        <ul class="pure-menu-list">
+                            <li class="pure-menu-heading">Versions</li>
+
+                            <li class="pure-menu-item">
+                                <div class="pure-menu pure-menu-scrollable sub-menu" id="releases-list" tabindex="-1" data-url="/crate/urex/0.0.3/menus/releases/src/urex/commonstring.rs.html">
+                                    <span class="rotate"><span class="fa fa-solid fa-spinner " aria-hidden="true"></span></span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                    
+                    
+                    <div class="pure-g">
+                        <div class="pure-u-1">
+                            <ul class="pure-menu-list">
+                                <li>
+                                    <a href="/crate/urex/0.0.3" class="pure-menu-link">
+                                        <b>65.56%</b>
+                                        of the crate is documented
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div></div>
+        </li><li class="pure-menu-item pure-menu-has-children">
+                <a href="#" class="pure-menu-link" aria-label="Platform">
+                    <span class="fa fa-solid fa-gears " aria-hidden="true"></span>
+                    <span class="title">Platform</span>
+                </a>
+
+                
+                <ul class="pure-menu-children" id="platforms" data-url="/crate/urex/0.0.3/menus/platforms/src/urex/commonstring.rs.html"><li class="pure-menu-item">
+            <a href="/crate/urex/0.0.3/target-redirect/src/urex/commonstring.rs.html" class="pure-menu-link" data-fragment="retain" rel="nofollow">x86_64-unknown-linux-gnu</a>
+        </li></ul>
+            </li><li class="pure-menu-item">
+                <a href="/crate/urex/0.0.3/features" title="Browse available feature flags of urex-0.0.3" class="pure-menu-link">
+                    <span class="fa fa-solid fa-flag " aria-hidden="true"></span>
+                    <span class="title">Feature flags</span>
+                </a>
+            </li>
+        
+    
+    <li id="crate-warnings" class="pure-menu-item hidden" data-url="/-/partial/crate-warnings/urex/"></li>
+</ul><div class="spacer"></div>
+                
+                <div id="abnormalities" class="hidden"></div>
+
+                <ul class="pure-menu-list">
+                    <li class="pure-menu-item pure-menu-has-children">
+                        <a href="#" class="pure-menu-link" aria-label="docs.rs">docs.rs</a>
+                        <ul class="pure-menu-children aligned-icons"><li class="pure-menu-item"><a class="pure-menu-link" href="/about"><span class="fa fa-solid fa-circle-info " aria-hidden="true"></span> About docs.rs</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/badges"><span class="fa fa-brands fa-fonticons " aria-hidden="true"></span> Badges</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/builds"><span class="fa fa-solid fa-gears " aria-hidden="true"></span> Builds</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/metadata"><span class="fa fa-solid fa-table " aria-hidden="true"></span> Metadata</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/redirections"><span class="fa fa-solid fa-road " aria-hidden="true"></span> Shorthand URLs</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/download"><span class="fa fa-solid fa-download " aria-hidden="true"></span> Download</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/rustdoc-json"><span class="fa fa-solid fa-file-code " aria-hidden="true"></span> Rustdoc JSON</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/releases/queue"><span class="fa fa-solid fa-gears " aria-hidden="true"></span> Build queue</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="https://foundation.rust-lang.org/policies/privacy-policy/#docs.rs" target="_blank"><span class="fa fa-solid fa-shield-halved " aria-hidden="true"></span> Privacy policy</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <ul class="pure-menu-list"><li class="pure-menu-item pure-menu-has-children">
+                        <a href="#" class="pure-menu-link" aria-label="Rust">Rust</a>
+                        <ul class="pure-menu-children">
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://www.rust-lang.org/" target="_blank">Rust website</a></li>
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://doc.rust-lang.org/book/" target="_blank">The Book</a></li>
+
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://doc.rust-lang.org/std/" target="_blank">Standard Library API Reference</a></li>
+
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://doc.rust-lang.org/rust-by-example/" target="_blank">Rust by Example</a></li>
+
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://doc.rust-lang.org/cargo/guide/" target="_blank">The Cargo Guide</a></li>
+
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://doc.rust-lang.org/nightly/clippy" target="_blank">Clippy Documentation</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <div id="search-input-nav">
+                    <label for="nav-search">
+                        <span class="fa fa-solid fa-magnifying-glass " aria-hidden="true"></span>
+                    </label>
+
+                    
+                    
+                    <input id="nav-search" name="query" type="text" aria-label="Find crate by search query" tabindex="-1"
+                        placeholder="Find crate"
+                        >
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<div id="alerts" class="hidden"></div><div class="rustdoc src container-rustdoc" id="rustdoc_body_wrapper" tabindex="-1"><script async src="/-/static/menu.js?0-0-0-4259a798bb58835b634f4d75c4481f2f17bdb1d5-2026-10-17"></script>
+<script async src="/-/static/index.js?0-0-0-4259a798bb58835b634f4d75c4481f2f17bdb1d5-2026-10-17"></script>
+
+<iframe src="/-/storage-change-detection.html" width="0" height="0" style="display: none"></iframe><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">urex/</div>commonstring.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>lazy_static::lazy_static;
+<a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>std::collections::BTreeMap;
+<a href=#3 id=3 data-nosnippet>3</a>
+<a href=#4 id=4 data-nosnippet>4</a><span class="macro">lazy_static!</span> {
+<a href=#5 id=5 data-nosnippet>5</a>    <span class="kw">pub static </span><span class="kw-2">ref </span>COMMONSTRING: BTreeMap&lt;u32, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt; = [
+<a href=#6 id=6 data-nosnippet>6</a>        (<span class="number">0</span>, <span class="string">"AABB"</span>),
+<a href=#7 id=7 data-nosnippet>7</a>        (<span class="number">5</span>, <span class="string">"AnimationClip"</span>),
+<a href=#8 id=8 data-nosnippet>8</a>        (<span class="number">19</span>, <span class="string">"AnimationCurve"</span>),
+<a href=#9 id=9 data-nosnippet>9</a>        (<span class="number">34</span>, <span class="string">"AnimationState"</span>),
+<a href=#10 id=10 data-nosnippet>10</a>        (<span class="number">49</span>, <span class="string">"Array"</span>),
+<a href=#11 id=11 data-nosnippet>11</a>        (<span class="number">55</span>, <span class="string">"Base"</span>),
+<a href=#12 id=12 data-nosnippet>12</a>        (<span class="number">60</span>, <span class="string">"BitField"</span>),
+<a href=#13 id=13 data-nosnippet>13</a>        (<span class="number">69</span>, <span class="string">"bitset"</span>),
+<a href=#14 id=14 data-nosnippet>14</a>        (<span class="number">76</span>, <span class="string">"bool"</span>),
+<a href=#15 id=15 data-nosnippet>15</a>        (<span class="number">81</span>, <span class="string">"char"</span>),
+<a href=#16 id=16 data-nosnippet>16</a>        (<span class="number">86</span>, <span class="string">"ColorRGBA"</span>),
+<a href=#17 id=17 data-nosnippet>17</a>        (<span class="number">96</span>, <span class="string">"Component"</span>),
+<a href=#18 id=18 data-nosnippet>18</a>        (<span class="number">106</span>, <span class="string">"data"</span>),
+<a href=#19 id=19 data-nosnippet>19</a>        (<span class="number">111</span>, <span class="string">"deque"</span>),
+<a href=#20 id=20 data-nosnippet>20</a>        (<span class="number">117</span>, <span class="string">"double"</span>),
+<a href=#21 id=21 data-nosnippet>21</a>        (<span class="number">124</span>, <span class="string">"dynamic_array"</span>),
+<a href=#22 id=22 data-nosnippet>22</a>        (<span class="number">138</span>, <span class="string">"FastPropertyName"</span>),
+<a href=#23 id=23 data-nosnippet>23</a>        (<span class="number">155</span>, <span class="string">"first"</span>),
+<a href=#24 id=24 data-nosnippet>24</a>        (<span class="number">161</span>, <span class="string">"float"</span>),
+<a href=#25 id=25 data-nosnippet>25</a>        (<span class="number">167</span>, <span class="string">"Font"</span>),
+<a href=#26 id=26 data-nosnippet>26</a>        (<span class="number">172</span>, <span class="string">"GameObject"</span>),
+<a href=#27 id=27 data-nosnippet>27</a>        (<span class="number">183</span>, <span class="string">"Generic Mono"</span>),
+<a href=#28 id=28 data-nosnippet>28</a>        (<span class="number">196</span>, <span class="string">"GradientNEW"</span>),
+<a href=#29 id=29 data-nosnippet>29</a>        (<span class="number">208</span>, <span class="string">"GUID"</span>),
+<a href=#30 id=30 data-nosnippet>30</a>        (<span class="number">213</span>, <span class="string">"GUIStyle"</span>),
+<a href=#31 id=31 data-nosnippet>31</a>        (<span class="number">222</span>, <span class="string">"int"</span>),
+<a href=#32 id=32 data-nosnippet>32</a>        (<span class="number">226</span>, <span class="string">"list"</span>),
+<a href=#33 id=33 data-nosnippet>33</a>        (<span class="number">231</span>, <span class="string">"long long"</span>),
+<a href=#34 id=34 data-nosnippet>34</a>        (<span class="number">241</span>, <span class="string">"map"</span>),
+<a href=#35 id=35 data-nosnippet>35</a>        (<span class="number">245</span>, <span class="string">"Matrix4x4f"</span>),
+<a href=#36 id=36 data-nosnippet>36</a>        (<span class="number">256</span>, <span class="string">"MdFour"</span>),
+<a href=#37 id=37 data-nosnippet>37</a>        (<span class="number">263</span>, <span class="string">"MonoBehaviour"</span>),
+<a href=#38 id=38 data-nosnippet>38</a>        (<span class="number">277</span>, <span class="string">"MonoScript"</span>),
+<a href=#39 id=39 data-nosnippet>39</a>        (<span class="number">288</span>, <span class="string">"m_ByteSize"</span>),
+<a href=#40 id=40 data-nosnippet>40</a>        (<span class="number">299</span>, <span class="string">"m_Curve"</span>),
+<a href=#41 id=41 data-nosnippet>41</a>        (<span class="number">307</span>, <span class="string">"m_EditorClassIdentifier"</span>),
+<a href=#42 id=42 data-nosnippet>42</a>        (<span class="number">331</span>, <span class="string">"m_EditorHideFlags"</span>),
+<a href=#43 id=43 data-nosnippet>43</a>        (<span class="number">349</span>, <span class="string">"m_Enabled"</span>),
+<a href=#44 id=44 data-nosnippet>44</a>        (<span class="number">359</span>, <span class="string">"m_ExtensionPtr"</span>),
+<a href=#45 id=45 data-nosnippet>45</a>        (<span class="number">374</span>, <span class="string">"m_GameObject"</span>),
+<a href=#46 id=46 data-nosnippet>46</a>        (<span class="number">387</span>, <span class="string">"m_Index"</span>),
+<a href=#47 id=47 data-nosnippet>47</a>        (<span class="number">395</span>, <span class="string">"m_IsArray"</span>),
+<a href=#48 id=48 data-nosnippet>48</a>        (<span class="number">405</span>, <span class="string">"m_IsStatic"</span>),
+<a href=#49 id=49 data-nosnippet>49</a>        (<span class="number">416</span>, <span class="string">"m_MetaFlag"</span>),
+<a href=#50 id=50 data-nosnippet>50</a>        (<span class="number">427</span>, <span class="string">"m_Name"</span>),
+<a href=#51 id=51 data-nosnippet>51</a>        (<span class="number">434</span>, <span class="string">"m_ObjectHideFlags"</span>),
+<a href=#52 id=52 data-nosnippet>52</a>        (<span class="number">452</span>, <span class="string">"m_PrefabInternal"</span>),
+<a href=#53 id=53 data-nosnippet>53</a>        (<span class="number">469</span>, <span class="string">"m_PrefabParentObject"</span>),
+<a href=#54 id=54 data-nosnippet>54</a>        (<span class="number">490</span>, <span class="string">"m_Script"</span>),
+<a href=#55 id=55 data-nosnippet>55</a>        (<span class="number">499</span>, <span class="string">"m_StaticEditorFlags"</span>),
+<a href=#56 id=56 data-nosnippet>56</a>        (<span class="number">519</span>, <span class="string">"m_Type"</span>),
+<a href=#57 id=57 data-nosnippet>57</a>        (<span class="number">526</span>, <span class="string">"m_Version"</span>),
+<a href=#58 id=58 data-nosnippet>58</a>        (<span class="number">536</span>, <span class="string">"Object"</span>),
+<a href=#59 id=59 data-nosnippet>59</a>        (<span class="number">543</span>, <span class="string">"pair"</span>),
+<a href=#60 id=60 data-nosnippet>60</a>        (<span class="number">548</span>, <span class="string">"PPtr&lt;Component&gt;"</span>),
+<a href=#61 id=61 data-nosnippet>61</a>        (<span class="number">564</span>, <span class="string">"PPtr&lt;GameObject&gt;"</span>),
+<a href=#62 id=62 data-nosnippet>62</a>        (<span class="number">581</span>, <span class="string">"PPtr&lt;Material&gt;"</span>),
+<a href=#63 id=63 data-nosnippet>63</a>        (<span class="number">596</span>, <span class="string">"PPtr&lt;MonoBehaviour&gt;"</span>),
+<a href=#64 id=64 data-nosnippet>64</a>        (<span class="number">616</span>, <span class="string">"PPtr&lt;MonoScript&gt;"</span>),
+<a href=#65 id=65 data-nosnippet>65</a>        (<span class="number">633</span>, <span class="string">"PPtr&lt;Object&gt;"</span>),
+<a href=#66 id=66 data-nosnippet>66</a>        (<span class="number">646</span>, <span class="string">"PPtr&lt;Prefab&gt;"</span>),
+<a href=#67 id=67 data-nosnippet>67</a>        (<span class="number">659</span>, <span class="string">"PPtr&lt;Sprite&gt;"</span>),
+<a href=#68 id=68 data-nosnippet>68</a>        (<span class="number">672</span>, <span class="string">"PPtr&lt;TextAsset&gt;"</span>),
+<a href=#69 id=69 data-nosnippet>69</a>        (<span class="number">688</span>, <span class="string">"PPtr&lt;Texture&gt;"</span>),
+<a href=#70 id=70 data-nosnippet>70</a>        (<span class="number">702</span>, <span class="string">"PPtr&lt;Texture2D&gt;"</span>),
+<a href=#71 id=71 data-nosnippet>71</a>        (<span class="number">718</span>, <span class="string">"PPtr&lt;Transform&gt;"</span>),
+<a href=#72 id=72 data-nosnippet>72</a>        (<span class="number">734</span>, <span class="string">"Prefab"</span>),
+<a href=#73 id=73 data-nosnippet>73</a>        (<span class="number">741</span>, <span class="string">"Quaternionf"</span>),
+<a href=#74 id=74 data-nosnippet>74</a>        (<span class="number">753</span>, <span class="string">"Rectf"</span>),
+<a href=#75 id=75 data-nosnippet>75</a>        (<span class="number">759</span>, <span class="string">"RectInt"</span>),
+<a href=#76 id=76 data-nosnippet>76</a>        (<span class="number">767</span>, <span class="string">"RectOffset"</span>),
+<a href=#77 id=77 data-nosnippet>77</a>        (<span class="number">778</span>, <span class="string">"second"</span>),
+<a href=#78 id=78 data-nosnippet>78</a>        (<span class="number">785</span>, <span class="string">"set"</span>),
+<a href=#79 id=79 data-nosnippet>79</a>        (<span class="number">789</span>, <span class="string">"short"</span>),
+<a href=#80 id=80 data-nosnippet>80</a>        (<span class="number">795</span>, <span class="string">"size"</span>),
+<a href=#81 id=81 data-nosnippet>81</a>        (<span class="number">800</span>, <span class="string">"SInt16"</span>),
+<a href=#82 id=82 data-nosnippet>82</a>        (<span class="number">807</span>, <span class="string">"SInt32"</span>),
+<a href=#83 id=83 data-nosnippet>83</a>        (<span class="number">814</span>, <span class="string">"SInt64"</span>),
+<a href=#84 id=84 data-nosnippet>84</a>        (<span class="number">821</span>, <span class="string">"SInt8"</span>),
+<a href=#85 id=85 data-nosnippet>85</a>        (<span class="number">827</span>, <span class="string">"staticvector"</span>),
+<a href=#86 id=86 data-nosnippet>86</a>        (<span class="number">840</span>, <span class="string">"string"</span>),
+<a href=#87 id=87 data-nosnippet>87</a>        (<span class="number">847</span>, <span class="string">"TextAsset"</span>),
+<a href=#88 id=88 data-nosnippet>88</a>        (<span class="number">857</span>, <span class="string">"TextMesh"</span>),
+<a href=#89 id=89 data-nosnippet>89</a>        (<span class="number">866</span>, <span class="string">"Texture"</span>),
+<a href=#90 id=90 data-nosnippet>90</a>        (<span class="number">874</span>, <span class="string">"Texture2D"</span>),
+<a href=#91 id=91 data-nosnippet>91</a>        (<span class="number">884</span>, <span class="string">"Transform"</span>),
+<a href=#92 id=92 data-nosnippet>92</a>        (<span class="number">894</span>, <span class="string">"TypelessData"</span>),
+<a href=#93 id=93 data-nosnippet>93</a>        (<span class="number">907</span>, <span class="string">"UInt16"</span>),
+<a href=#94 id=94 data-nosnippet>94</a>        (<span class="number">914</span>, <span class="string">"UInt32"</span>),
+<a href=#95 id=95 data-nosnippet>95</a>        (<span class="number">921</span>, <span class="string">"UInt64"</span>),
+<a href=#96 id=96 data-nosnippet>96</a>        (<span class="number">928</span>, <span class="string">"UInt8"</span>),
+<a href=#97 id=97 data-nosnippet>97</a>        (<span class="number">934</span>, <span class="string">"unsigned int"</span>),
+<a href=#98 id=98 data-nosnippet>98</a>        (<span class="number">947</span>, <span class="string">"unsigned long long"</span>),
+<a href=#99 id=99 data-nosnippet>99</a>        (<span class="number">966</span>, <span class="string">"unsigned short"</span>),
+<a href=#100 id=100 data-nosnippet>100</a>        (<span class="number">981</span>, <span class="string">"vector"</span>),
+<a href=#101 id=101 data-nosnippet>101</a>        (<span class="number">988</span>, <span class="string">"Vector2f"</span>),
+<a href=#102 id=102 data-nosnippet>102</a>        (<span class="number">997</span>, <span class="string">"Vector3f"</span>),
+<a href=#103 id=103 data-nosnippet>103</a>        (<span class="number">1006</span>, <span class="string">"Vector4f"</span>),
+<a href=#104 id=104 data-nosnippet>104</a>        (<span class="number">1015</span>, <span class="string">"m_ScriptingClassIdentifier"</span>),
+<a href=#105 id=105 data-nosnippet>105</a>        (<span class="number">1042</span>, <span class="string">"Gradient"</span>),
+<a href=#106 id=106 data-nosnippet>106</a>        (<span class="number">1051</span>, <span class="string">"Type*"</span>),
+<a href=#107 id=107 data-nosnippet>107</a>        (<span class="number">1057</span>, <span class="string">"int2_storage"</span>),
+<a href=#108 id=108 data-nosnippet>108</a>        (<span class="number">1070</span>, <span class="string">"int3_storage"</span>),
+<a href=#109 id=109 data-nosnippet>109</a>        (<span class="number">1083</span>, <span class="string">"BoundsInt"</span>),
+<a href=#110 id=110 data-nosnippet>110</a>        (<span class="number">1093</span>, <span class="string">"m_CorrespondingSourceObject"</span>),
+<a href=#111 id=111 data-nosnippet>111</a>        (<span class="number">1121</span>, <span class="string">"m_PrefabInstance"</span>),
+<a href=#112 id=112 data-nosnippet>112</a>        (<span class="number">1138</span>, <span class="string">"m_PrefabAsset"</span>),
+<a href=#113 id=113 data-nosnippet>113</a>        (<span class="number">1152</span>, <span class="string">"FileSize"</span>)
+<a href=#114 id=114 data-nosnippet>114</a>    ]
+<a href=#115 id=115 data-nosnippet>115</a>    .iter()
+<a href=#116 id=116 data-nosnippet>116</a>    .copied()
+<a href=#117 id=117 data-nosnippet>117</a>    .collect();
+<a href=#118 id=118 data-nosnippet>118</a>}
+</code></pre></div></section></main></div></body></html>

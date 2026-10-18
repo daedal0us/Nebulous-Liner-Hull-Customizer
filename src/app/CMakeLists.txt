@@ -2,8 +2,28 @@ qt_add_executable(NLHC WIN32
     main.cpp
     MainWindow.cpp
     MainWindow.h
+    I18n.cpp
+    I18n.h
+    ShipListModel.cpp
+    ShipListModel.h
+    HullEditorPanel.cpp
+    HullEditorPanel.h
+    StylePanel.cpp
+    StylePanel.h
+    DemoAssembly.cpp
+    DemoAssembly.h
+    view/Camera.cpp
+    view/Camera.h
+    view/HullRenderer.cpp
+    view/HullRenderer.h
+    view/HullViewport.cpp
+    view/HullViewport.h
+    view/OffscreenRenderer.cpp
+    view/OffscreenRenderer.h
+    view/RenderStyle.h
 )
-target_link_libraries(NLHC PRIVATE NLHCCore Qt6::Widgets)
+target_compile_definitions(NLHC PRIVATE NLHC_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_link_libraries(NLHC PRIVATE NLHCCore Qt6::Widgets Qt6::OpenGLWidgets Qt6::OpenGL)
 install(TARGETS NLHC RUNTIME DESTINATION bin)
 
 # Qt's own deploy script generator emits unquoted absolute paths, which breaks for
