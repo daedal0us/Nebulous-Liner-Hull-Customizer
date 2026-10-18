@@ -198,8 +198,11 @@ void main()
     float spec = pow(max(dot(normal, halfDir), 0.0), specPower);
     vec3 specular = vec3(spec) * (0.04 + 0.85 * metallic) * (0.15 + 0.85 * smoothness) * 1.6;
 
-    vec3 diffuse = color * (1.0 - 0.55 * metallic);
-    vec3 lit = diffuse * (ambient + 0.62 * key + 0.22 * fill + 0.16 * back) + vec3(rim) + specular;
+    // Metals lose diffuse, but the game's props are lit by an environment this viewer does not
+    // have: keep more of the albedo and lift the ambient so brass does not go black.
+    vec3 diffuse = color * (1.0 - 0.28 * metallic);
+    float metalAmbient = ambient + 0.18 * metallic;
+    vec3 lit = diffuse * (metalAmbient + 0.62 * key + 0.22 * fill + 0.16 * back) + vec3(rim) + specular;
     fragColor = vec4(clamp(lit, 0.0, 1.0), 1.0);
 }
 )GLSL";
