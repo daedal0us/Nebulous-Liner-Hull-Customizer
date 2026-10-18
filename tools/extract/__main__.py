@@ -42,6 +42,9 @@ def main(argv=None):
                         help="maximum paint mask edge in pixels (default 512)")
     parser.add_argument("--normal-size", type=int, default=None,
                         help="maximum normal map edge in pixels (default 512)")
+    parser.add_argument("--decal-size", type=int, default=None,
+                        help="maximum nameplate decal edge in pixels "
+                             "(default 256; the authored decal is 256 px)")
     parser.add_argument("--no-normals", action="store_true",
                         help="skip the normal map slot entirely")
     parser.add_argument("--max-bytes", default="60MB",
@@ -53,7 +56,7 @@ def main(argv=None):
 
     max_bytes = parse_bytes(args.max_bytes)
     sizes = {}
-    for slot in ("albedo", "mask", "normal"):
+    for slot in ("albedo", "mask", "normal", "decal"):
         size = getattr(args, "%s_size" % slot)
         if size is None:
             size = args.tex_size if args.tex_size else export.DEFAULT_SIZES[slot]
@@ -71,7 +74,8 @@ def main(argv=None):
         return 0
     report, extra = verify_module.verify(catalog, args.out, stats,
                                         max_bytes=max_bytes,
-                                        samples=args.samples)
+                                        samples=args.samples,
+                                        bundle_path=args.bundle)
     print()
     print("verification report")
     print("-------------------")
@@ -82,10 +86,12 @@ def main(argv=None):
               stats["pieces"], extra["meshFiles"], extra["vertices"],
               stats["materials"], len(stats["textureFailures"]),
               extra["totalBytes"] / 1048576.0))
-    print("textures: %d albedo, %d mask, %d normal at %s px (normal coverage %.0f%%)"
+    print("textures: %d albedo, %d mask, %d normal, %d decal at %s px "
+          "(normal coverage %.0f%%)"
           % (extra["textureCounts"]["albedo"], extra["textureCounts"]["mask"],
-             extra["textureCounts"]["normal"],
-             "/".join(str(sizes[slot]) for slot in ("albedo", "mask", "normal")),
+             extra["textureCounts"]["normal"], extra["textureCounts"]["decal"],
+             "/".join(str(sizes[slot])
+                      for slot in ("albedo", "mask", "normal", "decal")),
              extra["normalCoverage"] * 100.0))
     print("extracted in %.1fs" % stats["extractSeconds"])
     if report.failed:

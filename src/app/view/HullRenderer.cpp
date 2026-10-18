@@ -188,7 +188,10 @@ void main()
 
     // HDRP metals: the diffuse term dies down and a tight specular highlight takes over. That
     // is what separates the brass doodads from flat plastic.
-    float metallic = clamp(uMetallic, 0.0, 1.0);
+    // Only fixed props use the metallic response: the hull plating is authored metallic too,
+    // but it is lit by the game's environment probes, which this viewer does not have — applying
+    // the lobe there would just darken the livery.
+    float metallic = uPainted ? 0.0 : clamp(uMetallic, 0.0, 1.0);
     float smoothness = clamp(uSmoothness, 0.0, 1.0);
     vec3 halfDir = normalize(viewDir + keyLight);
     float specPower = mix(8.0, 320.0, smoothness);

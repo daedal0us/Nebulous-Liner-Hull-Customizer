@@ -13,7 +13,7 @@ import time
 
 from . import addressables, hierarchy, mathutil, meshes, serialized, textures, unityfs
 
-EXTRACTOR_VERSION = "0.1.0"
+EXTRACTOR_VERSION = "0.2.0"
 BUNDLE_NAME = "stock-f2"
 
 #: hull saveKey -> (role, container path, display name, catalog prefab path)
@@ -48,9 +48,20 @@ FUNCTIONAL_MATERIALS = ("engine glow", "window", "light", "lamp", "flare",
 #: texture slot -> (material property, addressable asset name suffix)
 AA_SLOTS = (("albedo", "_BaseColorMap", "_base_color"),
             ("mask", "_PaintMask", "_paint_mask"),
-            ("normal", "_NormalMap", "_normal"))
+            ("normal", "_NormalMap", "_normal"),
+            ("decal", "_nameplateDecal", "_nameplate_decal"))
 AA_PROPERTY = {slot[0]: slot[1] for slot in AA_SLOTS}
 AA_SUFFIX = {slot[0]: slot[2] for slot in AA_SLOTS}
+#: further property names a slot accepts, tried after AA_PROPERTY[slot].  The
+#: nameplate decal is authored as _nameplateDecal on HDRP decal materials and
+#: as _DecalMap on older ones.
+SLOT_ALIASES = {"decal": ("_DecalMap",)}
+SLOT_NAMES = tuple(slot[0] for slot in AA_SLOTS)
+
+
+def slot_properties(kind):
+    """Material properties that map to one texture slot, primary first."""
+    return (AA_PROPERTY[kind],) + tuple(SLOT_ALIASES.get(kind, ()))
 
 #: hull body material name -> addressable "<Variant> Textures" folder.  The
 #: authoring tool uses both "Marauder_A_Bow" and "CivBulk - A - Bow".
@@ -68,7 +79,7 @@ SEGMENT_COMPONENT = "HullSegmentMultiMaterial"
 CLASS_MATERIAL = 21
 CLASS_TEXTURE = 28
 
-DEFAULT_SIZES = {"albedo": 512, "mask": 512, "normal": 512}
+DEFAULT_SIZES = {"albedo": 512, "mask": 512, "normal": 512, "decal": 256}
 
 
 def is_functional_material(name):
@@ -82,6 +93,10 @@ LIVERY_MATERIAL_FIELDS = ("_originalMaterial", "_originalMaterials")
 #: The material property the tint pass writes; a material that does not declare it
 #: (plain HDRP/Lit thruster and engine glow slots) keeps its authored colour.
 PAINT_TINT_PROPERTY = "_BasePaintTint"
+#: The map that paint tint is masked through.  A secondary structure handed to
+#: The tint pass without one keeps its authored colour (the Bulk Hauler's bridge
+#: shell is the container liner's mesh with an unpainted freighter material).
+PAINT_MASK_PROPERTY = AA_PROPERTY["mask"]
 #: Renderer classes an _additionalMaterialTargets entry may reference.
 RENDERER_CLASSES = (hierarchy.CLASS_MESH_RENDERER, 137)
 
@@ -135,6 +150,16 @@ def declares_paint_tint(graph, path_id):
     return False
 
 
+def declares_paint_mask(graph, path_id):
+    """True when the material carries the map the tint is applied through."""
+    properties = graph.value(path_id).get("m_SavedProperties") or {}
+    for entry in properties.get("m_TexEnvs") or ():
+        if isinstance(entry, dict) and entry.get("first") == PAINT_MASK_PROPERTY:
+            return bool(hierarchy.pptr_path_id(
+                (entry.get("second") or {}).get("m_Texture")))
+    return False
+
+
 def segment_materials(graph, segment):
     """Material pathIDs one segment component puts under the faction livery.
 
@@ -168,13 +193,20 @@ def livery_materials(graph, hulls):
     clone.  Those materials are therefore the ones the game really recolours;
     everything else keeps its authored colour.
 
+    A secondary structure is repainted through its own _PaintMask: the three
+    stock liners share the same four superstructure meshes, and the Bulk Hauler
+    binds a freighter material authored without that map, which the game leaves
+    unpainted (see declares_paint_mask).
+
     Returns (materials, resolved segments, unresolved segment labels, slot
-    materials skipped because they do not declare PAINT_TINT_PROPERTY).
+    materials skipped because they do not declare PAINT_TINT_PROPERTY,
+    superstructure materials skipped because they carry no _PaintMask).
     """
     materials = {}
     resolved = 0
     unresolved = []
     skipped = set()
+    unmasked = set()
     for save_key, hull in hulls.items():
         for group in ("bows", "cores", "sterns", "superstructures"):
             for section in getattr(hull, group):
@@ -186,8 +218,12 @@ def livery_materials(graph, hulls):
                         continue
                     resolved += 1
                     for path_id in found:
+                        # A material without _PaintMask still follows the tint pass (_BasePaintTint is
+                        # what the game writes); it just cannot split base and trim colours.
+                        if not declares_paint_mask(graph, path_id):
+                            unmasked.add(path_id)
                         materials.setdefault(path_id, set()).add(save_key)
-    return materials, resolved, unresolved, skipped
+    return materials, resolved, unresolved, skipped, unmasked
 
 
 class Logger(object):
@@ -309,6 +345,17 @@ def _interleave(red, green, blue):
     return values
 
 
+def _interleave_rgba(red, green, blue, alpha):
+    """Pack four channels into one RGBA payload."""
+    values = bytearray(len(red) * 4)
+    for i in range(len(red)):
+        values[i * 4] = red[i]
+        values[i * 4 + 1] = green[i]
+        values[i * 4 + 2] = blue[i]
+        values[i * 4 + 3] = alpha[i]
+    return values
+
+
 class MaterialBuilder(object):
     """Decodes the textures a material needs and writes them as PNG.
 
@@ -348,6 +395,7 @@ class MaterialBuilder(object):
         self.failures = []
         self._by_name = None
         self.mask_sources = {}
+        self.decal_declared = {}
         self.texture_sources = {slot[0]: {} for slot in AA_SLOTS}
         self.shared_pngs = 0
         self.names = {}
@@ -453,14 +501,29 @@ class MaterialBuilder(object):
             "maskChannel": "r",
             "maskInvert": False,
             "trimBaked": False,
+            # HDRP _MaskMap means: the brass doodads are metallic=1 surfaces, and without a
+            # specular lobe a fixed prop renders like flat plastic.
+            "metallic": 0.0,
+            "smoothness": 0.5,
         }
         self.by_path[path_id] = definition
         self.names[definition["id"]] = name
         self.definitions.append(definition)
 
+        decal_property = next((property_name for property_name
+                               in slot_properties("decal")
+                               if property_name in environments), "")
+        self.decal_declared[definition["id"]] = decal_property
+
         albedo, albedo_origin = sources["albedo"]
+        # A nameplate intentionally reuses the segment albedo: the plaque is part of the LOD and
+        # its UVs live in the hull atlas, with the _nameplateDecal layered on top.
         if albedo:
             self._build_albedo(definition, albedo, albedo_origin)
+
+        mask_map = environments.get("_MaskMap")
+        if mask_map:
+            self._build_mask_map(definition, ("local", mask_map))
 
         mask, mask_origin = sources["mask"]
         if mask:
@@ -479,14 +542,21 @@ class MaterialBuilder(object):
         normal, normal_origin = sources["normal"]
         if normal:
             self._build_normal(definition, normal, normal_origin)
+
+        decal, decal_origin = sources["decal"]
+        if decal:
+            self._build_decal(definition, decal, decal_origin)
+        elif decal_property:
+            self.log("    decal %s undecodable: %s is declared but no texture "
+                     "resolved" % (definition["id"], decal_property))
         return definition["id"]
 
     # -- texture plumbing --------------------------------------------------
     def _resolve_slots(self, path_id, name, environments):
-        """{slot: (source, origin)} for the three hull maps of a material."""
+        """{slot: (source, origin)} for the hull maps of a material."""
         table = self.guid_tables.get(path_id) or {}
         slots = {}
-        for slot in ("albedo", "mask", "normal"):
+        for slot in SLOT_NAMES:
             if slot == "normal" and not self.normals:
                 slots[slot] = (None, "disabled")
                 continue
@@ -502,15 +572,17 @@ class MaterialBuilder(object):
         A source is ("guid", guid) for an addressable texture or
         ("local", pathID) for a texture that lives in the hull bundle itself.
         """
-        guid = table.get(AA_PROPERTY[kind])
-        if guid and self.catalog is not None and self.catalog.resolve(guid):
-            return ("guid", guid), "guid"
+        for property_name in slot_properties(kind):
+            guid = table.get(property_name)
+            if guid and self.catalog is not None and self.catalog.resolve(guid):
+                return ("guid", guid), "guid"
         guid = self._convention(name, kind, environments)
         if guid:
             return ("guid", guid), "convention"
-        path_id = environments.get(AA_PROPERTY[kind])
-        if path_id:
-            return ("local", path_id), "property"
+        for property_name in slot_properties(kind):
+            path_id = environments.get(property_name)
+            if path_id:
+                return ("local", path_id), "property"
         if kind == "albedo" and environments.get("_MainTex"):
             return ("local", environments["_MainTex"]), "property"
         if kind == "mask":
@@ -645,6 +717,28 @@ class MaterialBuilder(object):
         definition["mask"] = self._write("mask", definition, source, width, height,
                                          1, values)
 
+    def _build_mask_map(self, definition, source):
+        """HDRP _MaskMap: R = metallic, G = occlusion, A = smoothness.
+
+        Only the channel means are kept as scalars: the game's brass props need a metallic
+        response, and shipping another 2048 square texture set for three numbers would not
+        fit the asset budget.
+        """
+        try:
+            name, _width, _height, channels, _fmt = self._sample_uncached(source, 64)
+        except Exception as exc:
+            self.log("    maskmap %s undecodable (%s)" % (definition["id"], exc))
+            return
+        red, _green, _blue, alpha = channels
+
+        def mean(values):
+            return sum(values) / float(len(values) or 1) / 255.0
+
+        definition["metallic"] = round(mean(red), 4)
+        definition["smoothness"] = round(mean(alpha), 4)
+        self.log("    maskmap %s <- %-34s metallic %.2f smoothness %.2f"
+                 % (definition["id"], name, definition["metallic"], definition["smoothness"]))
+
     def _build_albedo(self, definition, source, origin):
         try:
             name, width, height, channels, _fmt = self._sample("albedo", source)
@@ -653,11 +747,14 @@ class MaterialBuilder(object):
             return
         red, green, blue, alpha = channels
         grey = textures.is_grayscale(red, green, blue)
-        definition["albedoMode"] = "multiply" if grey else "overlay"
         # multiply: rgb = paint * lerp(1, albedo, mix) -- 1.0 keeps the full
         # albedo detail, 0.0 would drop it entirely.
         # overlay: the albedo is added over the paint with a lighter weight.
-        definition["albedoMix"] = 1.0 if grey else 0.35
+        # A fixed material is not painted at all: HDRP multiplies baseColor * albedo at full
+        # strength, which is what turns the grey doodads atlas into brass.
+        full_strength = grey or not definition["paintable"]
+        definition["albedoMode"] = "multiply" if full_strength else "overlay"
+        definition["albedoMix"] = 1.0 if full_strength else 0.35
         if grey:
             values, channel_count = red, 1
         else:
@@ -689,6 +786,29 @@ class MaterialBuilder(object):
         definition["normalStrength"] = 1.0
         self.log("    normal %s <- %-32s (%s)" % (definition["id"], name, origin))
 
+    def _build_decal(self, definition, source, origin):
+        """Nameplate decal; kept as RGBA when the source has an alpha mask."""
+        try:
+            name, width, height, channels, _fmt = self._sample("decal", source)
+        except Exception as exc:
+            self.log("    decal %s undecodable (%s)" % (definition["id"], exc))
+            return
+        red, green, blue, alpha = channels
+        if any(value != 255 for value in alpha):
+            # The authored decal is a glyph in RGB cut out by alpha (BC3), so
+            # alpha is the shape and has to survive the export.
+            values = _interleave_rgba(red, green, blue, alpha)
+            channel_count = 4
+            definition["decalMode"] = "alpha"
+        else:
+            values, channel_count = textures.luminance(red, green, blue), 1
+            definition["decalMode"] = "luminance"
+        definition["decal"] = self._write("decal", definition, source, width,
+                                          height, channel_count, values)
+        self.log("    decal %s <- %-30s %dx%d %s (%s)"
+                 % (definition["id"], name, width, height,
+                    "rgba" if channel_count == 4 else "grey", origin))
+
 
 def _vec(values, digits=6):
     return [round(float(v), digits) + 0.0 for v in values]
@@ -708,14 +828,21 @@ class PieceBuilder(object):
         self.vertex_total = 0
         self.index_total = 0
 
-    def build(self, section):
+    def build(self, section, bake=True):
+        """The catalog piece of one section.
+
+        bake=False enumerates the same nodes (same order, same material slots)
+        but writes no .nlmesh file, so a hull prefab that binds other materials
+        to a shared piece can be read without duplicating geometry.
+        """
         graph = self.graph
         nodes = []
         node_of_go = {}
         transforms = {}
         space = hierarchy.SectionSpace(graph, section.root_go)
         for depth, go in graph.walk(section.root_go):
-            world = space.transform_of_game_object(graph, go, transforms)
+            world = (space.transform_of_game_object(graph, go, transforms)
+                     if bake else None)
             parent = graph.parent_of(go)
             entry = {
                 "parent": node_of_go.get(parent, -1) if depth else -1,
@@ -728,7 +855,7 @@ class PieceBuilder(object):
             }
             node_of_go[go] = len(nodes)
             nodes.append(entry)
-            self._attach_geometry(go, world, entry, nodes, node_of_go)
+            self._attach_geometry(go, world, entry, nodes, node_of_go, bake)
 
         piece = {
             "id": section.id,
@@ -759,7 +886,7 @@ class PieceBuilder(object):
         piece["meshIds"] = used
         return piece
 
-    def _attach_geometry(self, go, world, entry, nodes, node_of_go):
+    def _attach_geometry(self, go, world, entry, nodes, node_of_go, bake=True):
         graph = self.graph
         filters = graph.components_by_class_id(go, hierarchy.CLASS_MESH_FILTER)
         if not filters:
@@ -803,10 +930,11 @@ class PieceBuilder(object):
                     "name": "%s#%d" % (entry["name"], i),
                 }
                 nodes.append(node)
-            indices = mesh.submesh_indices(submesh)
-            if not indices:
+            if not submesh[1]:
                 continue
-            node["mesh"] = self._write_mesh(mesh, indices, world)
+            if bake:
+                node["mesh"] = self._write_mesh(
+                    mesh, mesh.submesh_indices(submesh), world)
             node["material"] = material_id
 
     def _write_mesh(self, mesh, indices, world):
@@ -905,11 +1033,12 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
     log = log or Logger()
     sizes = dict(DEFAULT_SIZES, **(sizes or {}))
     started = time.time()
-    folders = ("mesh", "mask", "albedo", "normal")
+    folders = ("mesh", "mask", "albedo", "normal", "decal")
     for sub in folders:
         os.makedirs(os.path.join(out_dir, sub), exist_ok=True)
     for sub, suffix in (("mesh", ".nlmesh"), ("mask", ".png"),
-                        ("albedo", ".png"), ("normal", ".png")):
+                        ("albedo", ".png"), ("normal", ".png"),
+                        ("decal", ".png")):
         folder = os.path.join(out_dir, sub)
         for name in os.listdir(folder):
             if name.endswith(suffix):
@@ -938,8 +1067,8 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
                 % (type(exc).__name__, exc))
             aa_catalog = None
             pool = None
-    (livery, livery_segments, livery_unresolved,
-     livery_without_tint) = livery_materials(graph, hulls)
+    (livery, livery_segments, livery_unresolved, livery_without_tint,
+     livery_unmasked) = livery_materials(graph, hulls)
     livery_fallback = not livery
     log("livery: %d materials from %d hull segments%s"
         % (len(livery), livery_segments,
@@ -951,6 +1080,11 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
             % (PAINT_TINT_PROPERTY, len(livery_without_tint),
                sorted(graph.value(path_id).get("m_Name") or ""
                       for path_id in livery_without_tint)[:6]))
+    if livery_unmasked:
+        log("  livery skipped, superstructure without %s: %d %s"
+            % (PAINT_MASK_PROPERTY, len(livery_unmasked),
+               sorted(graph.value(path_id).get("m_Name") or ""
+                      for path_id in livery_unmasked)))
     if livery_fallback:
         log("  WARNING no hull segment resolved a livery material: falling back "
             "to the name based paintable rule")
@@ -973,10 +1107,81 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
                len(piece["nodes"]), len(piece["dressingPoints"]),
                len(piece["meshIds"])))
 
+    # One piece is one mesh (_key), but every hull prefab instance binds its own
+    # materials to that mesh: the Bulk Hauler's bridge and the container liner's
+    # are the same piece with a freighter and a lineship material.  collect_pieces
+    # keeps the instance the exporter prefers, so each hull type records the node
+    # materials its own instance carries.  Sparse: only nodes that differ.
+    by_id = {piece["id"]: piece for piece in catalog_pieces}
+    scan_started = time.time()
+    scans = 0
+    node_materials = {}
+    instance_materials = {}
+    node_conflicts = []
+    node_shapes = []
+    for save_key in HULLS:
+        per_piece = {}
+        per_piece_sets = {}
+        signatures = {}
+        for group in ("bows", "cores", "sterns", "superstructures"):
+            for section in getattr(hulls[save_key], group):
+                piece = by_id.get(section.id)
+                if piece is None:
+                    continue
+                nodes = builder.build(section, bake=False)["nodes"]
+                scans += 1
+                signature = tuple(node["material"] for node in nodes)
+                if section.id in signatures:
+                    if signatures[section.id] != signature:
+                        node_conflicts.append("%s %s: two instances disagree"
+                                              % (save_key, section.id))
+                    continue
+                signatures[section.id] = signature
+                if len(nodes) != len(piece["nodes"]):
+                    # The hulls do not always bind the same node tree to a shared
+                    # mesh (a refit toggles LOD children); the piece keeps the
+                    # preferred instance, so only a differing material set is news.
+                    shared = set(node["material"] for node in piece["nodes"]
+                                 if node["material"])
+                    if shared != set(m for m in signature if m):
+                        node_conflicts.append(
+                            "%s %s: instance binds other materials"
+                            % (save_key, section.id))
+                    else:
+                        node_shapes.append("%s %s: %d nodes, piece has %d"
+                                           % (save_key, section.id, len(nodes),
+                                              len(piece["nodes"])))
+                    continue
+                overrides = {}
+                for index, node in enumerate(nodes):
+                    wanted = node["material"]
+                    if wanted == piece["nodes"][index]["material"]:
+                        continue
+                    if not wanted:
+                        node_conflicts.append("%s %s node %d: instance has no "
+                                              "material" % (save_key, section.id,
+                                                            index))
+                        continue
+                    overrides[str(index)] = wanted
+                if overrides:
+                    per_piece[section.id] = overrides
+                per_piece_sets[section.id] = sorted(set(
+                    material for material in signature if material))
+        if per_piece:
+            node_materials[save_key] = per_piece
+        instance_materials[save_key] = per_piece_sets
+    log("  instance scan: %d sections in %.1fs"
+        % (scans, time.time() - scan_started))
+    for label in node_shapes:
+        log("  node tree differs from the shared piece, materials agree: %s"
+            % label)
+    for label in node_conflicts:
+        log("  WARNING %s" % label)
+
     hull_entries = []
     for save_key, (role, container_path, display_name, prefab_path) in HULLS.items():
         hull = hulls[save_key]
-        hull_entries.append({
+        entry = {
             "id": save_key,
             "displayName": display_name,
             "role": role,
@@ -986,7 +1191,11 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
             "cores": [section.id for section in hull.cores],
             "sterns": [section.id for section in hull.sterns],
             "superstructures": [section.id for section in hull.superstructures],
-        })
+        }
+        # nodeMaterials stays empty: the shared superstructure pieces are tinted by the game in
+        # every hull type (Freighter Superstructure declares _BasePaintTint), so there is no
+        # per-type material difference to override.
+        hull_entries.append(entry)
 
     paintable_ids = {m["id"] for m in materials.definitions if m["paintable"]}
     fixed_names = sorted(set(materials.fixed_names))
@@ -1008,7 +1217,6 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
     segment_words = ("bow", "core", "stern", "mid")
     hull_surface_issues = []
     container_surface = {}
-    by_id = {piece["id"]: piece for piece in catalog_pieces}
     for piece in catalog_pieces:
         if piece["kind"] != "primary":
             continue
@@ -1065,13 +1273,15 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
     hull_materials = {}
     for save_key in HULLS:
         referenced = []
+        instances = instance_materials.get(save_key) or {}
         for group in ("bows", "cores", "sterns", "superstructures"):
             for section in getattr(hulls[save_key], group):
-                piece = by_id.get(section.id)
-                if piece is None:
-                    continue
-                for node in piece["nodes"]:
-                    material = node["material"]
+                materials_here = instances.get(section.id)
+                if materials_here is None:
+                    piece = by_id.get(section.id)
+                    materials_here = [] if piece is None else [
+                        node["material"] for node in piece["nodes"]]
+                for material in materials_here:
                     if material and material not in referenced:
                         referenced.append(material)
         hull_materials[save_key] = {
@@ -1079,6 +1289,9 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
             "livery": _role_ids(referenced, "livery"),
             "fixed": _role_ids(referenced, "fixed"),
         }
+
+    used_material_ids = {node["material"] for piece in catalog_pieces
+                         for node in piece["nodes"] if node.get("material")}
 
     catalog = {
         "formatVersion": 1,
@@ -1090,7 +1303,10 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
         },
         "hullTypes": hull_entries,
         "pieces": catalog_pieces,
-        "materials": materials.definitions,
+        # Nothing may reference a material that no node binds: the instance scan can register a
+        # material variant that the exported pieces do not use.
+        "materials": [definition for definition in materials.definitions
+                      if definition["id"] in used_material_ids],
     }
     path = os.path.join(out_dir, "catalog.json")
     with open(path, "w", encoding="utf-8") as handle:
@@ -1107,9 +1323,15 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
         "meshes": builder.mesh_count,
         "vertices": builder.vertex_total,
         "indices": builder.index_total,
-        "materials": len(materials.definitions),
+        "materials": len(catalog["materials"]),
         "paintable": len(paintable_ids),
         "materialNames": dict(materials.names),
+        "materialPaths": {definition["id"]: path_id
+                          for path_id, definition in materials.by_path.items()},
+        "nodeMaterials": node_materials,
+        "nodeMaterialConflicts": list(node_conflicts),
+        "nodeShapeMismatches": list(node_shapes),
+        "instanceMaterials": instance_materials,
         "hullMaterials": hull_materials,
         "livery": {
             "materials": len(livery),
@@ -1117,6 +1339,8 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
             "unresolved": list(livery_unresolved),
             "withoutTint": sorted(graph.value(path_id).get("m_Name") or ""
                                   for path_id in livery_without_tint),
+            "withoutPaintMask": sorted(graph.value(path_id).get("m_Name") or ""
+                                       for path_id in livery_unmasked),
             "fallback": livery_fallback,
             "fallbackMaterials": materials.fallback_count,
         },
@@ -1124,6 +1348,11 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
         "hullSurfaceIssues": [list(item) for item in hull_surface_issues],
         "hullSurface": container_surface,
         "maskSources": dict(materials.mask_sources),
+        "decalDeclared": dict(materials.decal_declared),
+        "decals": {material["id"]: {"file": material["decal"],
+                                    "mode": material["decalMode"]}
+                   for material in materials.definitions
+                   if material.get("decal")},
         "textureFailures": materials.failures,
         "textureSizes": dict(sizes),
         "textureSources": {slot: dict(counts)

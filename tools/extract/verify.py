@@ -13,7 +13,10 @@ import json
 import os
 import xml.etree.ElementTree as ElementTree
 
-from . import meshes, textures
+from . import export, hierarchy, meshes, serialized, textures, unityfs
+
+#: material properties the decal slot may come from (export.SLOT_ALIASES)
+DECAL_PROPERTIES = ("_nameplateDecal", "_DecalMap")
 
 #: key prefix -> dressing count
 DOC_BOWS = {
@@ -39,6 +42,18 @@ DOC_SUPERSTRUCTURES = {
 }
 HULL_IDS = ["Stock/Bulk Hauler", "Stock/Container Hauler",
             "Stock/Container Hauler Refit"]
+
+
+class PathIdMaterials(object):
+    """Material lookup that hands back the pathID instead of a catalog id.
+
+    PieceBuilder maps renderer materials through a MaterialBuilder; the verifier
+    only needs to know *which* material a node carries, so it re-reads the node
+    list of a prefab instance without building (or exporting) any material.
+    """
+
+    def material_id(self, path_id):
+        return path_id
 
 
 class Report(object):
@@ -86,7 +101,7 @@ def read_fleets(directory):
 
 
 def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
-           stream=None):
+           stream=None, bundle_path=None):
     import sys
     stream = stream or sys.stdout
     report = Report()
@@ -342,6 +357,74 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                      ", ".join("%s %s" % (material_id, names.get(material_id, "?"))
                                for material_id in ids)), file=stream)
 
+    # --- per hull type node materials -------------------------------------
+    # One piece is one mesh; the hull prefabs bind their own materials to it.
+    # hullTypes[i].nodeMaterials overrides the catalog piece's node material at a
+    # sparse set of node indices, so these checks pin the shape, the id space and
+    # the two properties the renderer relies on: the Bulk Hauler's bridge must
+    # come out unpainted and the container liner's painted.
+    piece_nodes = {piece["id"]: piece["nodes"] for piece in pieces.values()}
+    material_ids = {material["id"] for material in materials}
+    overrides = {hull_id: (hulls.get(hull_id) or {}).get("nodeMaterials") or {}
+                 for hull_id in HULL_IDS}
+    shape_issues = []
+    id_issues = []
+    for hull_id in HULL_IDS:
+        for piece_id, node_table in overrides[hull_id].items():
+            if not isinstance(node_table, dict):
+                shape_issues.append("%s %s is not an object" % (hull_id, piece_id))
+                continue
+            if piece_id not in piece_nodes:
+                shape_issues.append("%s %s: no such piece" % (hull_id, piece_id))
+                continue
+            if not node_table:
+                shape_issues.append("%s %s is empty" % (hull_id, piece_id))
+            for key, material_id in node_table.items():
+                try:
+                    index = int(key)
+                except (TypeError, ValueError):
+                    shape_issues.append("%s %s key %r is not a node index"
+                                        % (hull_id, piece_id, key))
+                    continue
+                if not 0 <= index < len(piece_nodes[piece_id]):
+                    shape_issues.append(
+                        "%s %s node %s out of range (%d nodes)"
+                        % (hull_id, piece_id, key, len(piece_nodes[piece_id])))
+                if material_id not in material_ids:
+                    id_issues.append("%s %s node %s: %s"
+                                     % (hull_id, piece_id, key, material_id))
+    report.check("nodeMaterials indexes existing pieces and nodes",
+                 not shape_issues,
+                 "%d hull types, %d pieces%s"
+                 % (len(HULL_IDS),
+                    sum(len(table) for table in overrides.values()),
+                    "" if not shape_issues else "; " + "; ".join(shape_issues[:3])))
+    report.check("nodeMaterials only names catalog materials", not id_issues,
+                 "%d ids%s" % (len(material_ids),
+                               "" if not id_issues else
+                               "; " + "; ".join(id_issues[:3])))
+
+    def applied(hull_id, piece_id):
+        """Material ids of a piece once the hull type's overrides are applied."""
+        piece = pieces.get(piece_id)
+        if piece is None:
+            return set()
+        table = overrides.get(hull_id, {}).get(piece_id) or {}
+        found = set()
+        for index, node in enumerate(piece["nodes"]):
+            material_id = table.get(str(index), node["material"])
+            if material_id:
+                found.add(material_id)
+        return found
+
+    # Every superstructure piece is tinted by the game in all hull types (the freighter and the
+    # lineship bridge materials both declare _BasePaintTint), so the shipped catalog must keep
+    # the shared pieces livery instead of overriding them per hull type.
+    stale = [hull.get("id") for hull in hulls.values() if hull.get("nodeMaterials")]
+    report.check("no per-hull-type material overrides", not stale,
+                 "shared superstructure pieces are tinted in every hull type"
+                 if not stale else "; ".join(stale[:3]))
+
     doodads = [material for material in materials
                if material["id"] == "t:0004"
                or "doodad" in (names.get(material["id"]) or "").lower()]
@@ -367,8 +450,9 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
     placeholders = set()
     unreadable = []
     dark_ratios = []
+    decal_pixels = {}
     for material in materials:
-        for kind in ("albedo", "mask", "normal"):
+        for kind in ("albedo", "mask", "normal", "decal"):
             relative = material.get(kind) or ""
             if not relative:
                 continue
@@ -381,9 +465,12 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
             except Exception as exc:
                 unreadable.append("%s: %s" % (relative, exc))
                 continue
-            if channels not in (1, 3):
+            # only a decal keeps its alpha channel (RGBA, colour type 6)
+            if channels not in ((1, 4) if kind == "decal" else (1, 3)):
                 unreadable.append("%s has %d channels" % (relative, channels))
             texture_files.setdefault(kind, set()).add(relative)
+            if kind == "decal":
+                decal_pixels[material["id"]] = (channels, width, height)
             if width <= 4 and height <= 4:
                 placeholders.add((material["id"], kind))
                 continue
@@ -461,8 +548,61 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                  "%d files, %d materials"
                  % (sum(len(files) for files in texture_files.values()),
                     len(materials)))
+    # --- nameplate decals ------------------------------------------------
+    # The decal slot must appear exactly on the materials whose source declares
+    # _nameplateDecal / _DecalMap: a catalog entry without the property is an
+    # invented slot, a declared property without an entry a silent drop.
+    declared = stats.get("decalDeclared") or {}
+    with_decal = [material for material in materials if material.get("decal")]
+    decal_slot_issues = []
+    for material in materials:
+        declared_property = declared.get(material["id"]) or ""
+        exported = material.get("decal") or ""
+        if bool(declared_property) != bool(exported):
+            decal_slot_issues.append(
+                "%s %s declared=%r exported=%r" % (material["id"], names.get(
+                    material["id"], "?"), declared_property, exported or "-"))
+        elif declared_property and declared_property not in DECAL_PROPERTIES:
+            decal_slot_issues.append("%s property %r" % (material["id"],
+                                                         declared_property))
+    report.check("decal slot only on materials declaring _nameplateDecal",
+                 bool(with_decal) and not decal_slot_issues,
+                 "%d materials declare, %d export %s%s"
+                 % (len([value for value in declared.values() if value]),
+                    len(with_decal),
+                    ", ".join(sorted({material["decal"]
+                                     for material in with_decal})),
+                    "" if not decal_slot_issues else
+                    "; " + ", ".join(decal_slot_issues[:3])))
+    decal_bad = []
+    for material in with_decal:
+        relative = material["decal"]
+        mode = material.get("decalMode")
+        if mode not in ("alpha", "luminance"):
+            decal_bad.append("%s decalMode %r" % (material["id"], mode))
+        record = decal_pixels.get(material["id"])
+        if record is None:
+            decal_bad.append("%s %s missing" % (material["id"], relative))
+            continue
+        channels, width, height = record
+        if channels != (4 if mode == "alpha" else 1):
+            decal_bad.append("%s %s has %d channels" % (material["id"], mode,
+                                                        channels))
+        if width <= 4 or height <= 4:
+            decal_bad.append("%s is a placeholder" % material["id"])
+        if not relative.startswith("decal/"):
+            decal_bad.append("%s not under decal/" % relative)
+    report.check("every decal PNG is real and matches its decalMode",
+                 bool(with_decal) and not decal_bad,
+                 "%d decals (%s)%s"
+                 % (len(with_decal),
+                    ", ".join("%s %s %s" % (material["id"], material["decal"],
+                                            material.get("decalMode"))
+                              for material in with_decal[:2]),
+                    "" if not decal_bad else "; " + ", ".join(decal_bad[:3])))
+
     texture_counts = {}
-    for kind in ("albedo", "mask", "normal"):
+    for kind in ("albedo", "mask", "normal", "decal"):
         files = texture_files.get(kind) or set()
         size = sum(os.path.getsize(os.path.join(out_dir, name)) for name in files)
         texture_counts[kind] = (len(files), size)

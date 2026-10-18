@@ -1,6 +1,9 @@
 """Texture2D decoding (BC1 / BC3 / BC7 / RGBA32 / RGB24 / BGRA32 / ARGB32 /
 Alpha8), channel statistics, box downsampling and 8 bit PNG output.
 
+PNGs are written as 8 bit grey (colour type 0), RGB (2) or RGBA (6): the decal
+slot keeps its alpha, everything else is opaque.
+
 Hull materials in stock-f2 only use BC1 (format 10) and BC3 (format 12); the
 other decoders exist so the pipeline degrades gracefully instead of failing.
 Image data is usually streamed into the bundle's .resS node (m_StreamData), so
@@ -371,6 +374,12 @@ def downsample(channel, width, height, target):
     return out, new_width, new_height
 
 
+def luminance(red, green, blue):
+    """Grey channel from RGB (Rec. 601 integer weights, 8 bit)."""
+    return bytearray((r * 77 + g * 150 + b * 29) >> 8 for r, g, b in
+                     zip(red, green, blue))
+
+
 def is_grayscale(red, green, blue, tolerance=6):
     """True when the texture is (almost) a luminance image."""
     step = max(1, len(red) // 4096)
@@ -385,8 +394,8 @@ def is_grayscale(red, green, blue, tolerance=6):
 
 
 def write_png(path, width, height, channels, data):
-    """Write an 8 bit PNG; channels is 1 (gray) or 3 (rgb)."""
-    color_type = 0 if channels == 1 else 2
+    """Write an 8 bit PNG; channels is 1 (grey), 3 (rgb) or 4 (rgba)."""
+    color_type = {1: 0, 3: 2, 4: 6}[channels]
     raw = bytearray()
     stride = width * channels
     for y in range(height):
@@ -418,7 +427,7 @@ def _paeth(left, up, upleft):
 
 
 def read_png(path):
-    """(width, height, channels, pixels) of an 8 bit grey/RGB PNG."""
+    """(width, height, channels, pixels) of an 8 bit grey/RGB/RGBA PNG."""
     with open(path, "rb") as handle:
         blob = handle.read()
     if blob[:8] != b"\x89PNG\r\n\x1a\n":
@@ -433,11 +442,11 @@ def read_png(path):
         pos += 12 + length
         if kind == b"IHDR":
             width, height, depth, color_type = struct.unpack_from(">IIBB", payload, 0)
-            if depth != 8 or color_type not in (0, 2):
-                raise TextureError("%r is %d bit, colour type %d (only 8 bit "
-                                   "grey/RGB are supported)" % (path, depth,
-                                                                color_type))
-            channels = 1 if color_type == 0 else 3
+            if depth != 8 or color_type not in (0, 2, 6):
+                raise TextureError("%r is %d bit, colour type %d (only 8 "
+                                   "bit grey/RGB/RGBA are supported)"
+                                   % (path, depth, color_type))
+            channels = {0: 1, 2: 3, 6: 4}[color_type]
         elif kind == b"IDAT":
             compressed += payload
         elif kind == b"IEND":
