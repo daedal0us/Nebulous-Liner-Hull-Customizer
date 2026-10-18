@@ -198,11 +198,25 @@ void main()
     float spec = pow(max(dot(normal, halfDir), 0.0), specPower);
     vec3 specular = vec3(spec) * (0.04 + 0.85 * metallic) * (0.15 + 0.85 * smoothness) * 1.6;
 
-    // Metals lose diffuse, but the game's props are lit by an environment this viewer does not
-    // have: keep more of the albedo and lift the ambient so brass does not go black.
-    vec3 diffuse = color * (1.0 - 0.28 * metallic);
-    float metalAmbient = ambient + 0.18 * metallic;
-    vec3 lit = diffuse * (metalAmbient + 0.62 * key + 0.22 * fill + 0.16 * back) + vec3(rim) + specular;
+    float lambert = ambient + 0.62 * key + 0.22 * fill + 0.16 * back;
+    vec3 diffuseLit = color * (1.0 - metallic) * lambert;
+
+    // HDRP metals show no diffuse at all: what you see is the environment, tinted by
+    // albedo * baseColor. Without a reflection term a white-ish doodad atlas just paints the
+    // prop white, so the viewer fakes a sky/ground gradient instead.
+    vec3 skyColor = vec3(1.05, 1.02, 0.98);
+    vec3 groundColor = vec3(0.28, 0.26, 0.24);
+    vec3 envColor = mix(groundColor, skyColor, clamp(0.5 + 0.5 * normal.y, 0.0, 1.0));
+    float fresnel = 0.05 + 0.95 * pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
+    // HDRP metal: the reflection takes its hue from the specular colour and only its brightness
+    // from the detail map. The game sees this through a warm environment probe plus filmic
+    // tonemapping, which deepens the hue; the viewer has neither, so the hue is deepened here.
+    float albedoLuma = dot(albedoSample, vec3(0.2990, 0.5870, 0.1140));
+    vec3 metalColor = pow(uMaterialColor.rgb, vec3(1.45));
+    metalColor *= mix(0.62, 1.10, clamp(albedoLuma, 0.0, 1.0));
+    vec3 metalEnv = metalColor * envColor * (0.95 + 0.40 * fresnel) * (0.45 + 0.55 * smoothness);
+
+    vec3 lit = mix(diffuseLit + vec3(rim), metalEnv + specular, metallic);
     fragColor = vec4(clamp(lit, 0.0, 1.0), 1.0);
 }
 )GLSL";
