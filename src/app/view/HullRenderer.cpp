@@ -45,9 +45,10 @@ const char *kFragmentShader = R"GLSL(
 in vec3 vNormal;
 in vec2 vUv;
 
-// UVs are used exactly as the meshes store them: writing and sampling the maps in the same
-// orientation keeps stencil text ("NO EVA FWD THIS LINE") and the hull symbols upright.
-vec2 textureUv() { return vUv; }
+// The exported maps are stored rotated by 180 degrees (the paint mask is the proof: its stencil
+// text and the hull symbols only read correctly with both axes inverted), so every lookup undoes
+// that rotation. Asserting it here keeps all four maps consistent with each other.
+vec2 textureUv() { return vec2(1.0 - vUv.x, 1.0 - vUv.y); }
 in float vTrim;
 in vec3 vWorld;
 
