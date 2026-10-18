@@ -69,6 +69,10 @@ struct MaterialDef
     // _nameplateDecal: white markings (hull numbers, lettering) laid over the paint.
     QString decalPath;
     QString decalMode = QStringLiteral("luminance");
+    // HDRP _MaskMap: R = metallic, A = smoothness. Metals (the brass doodads) are what make a
+    // fixed prop read as metal instead of flat plastics.
+    float metallic = 0.0f;
+    float smoothness = 0.5f;
 };
 
 struct HullTypeDef

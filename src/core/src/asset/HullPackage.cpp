@@ -318,6 +318,8 @@ bool HullPackage::load(const QString &rootDir, QString *error)
         def.normalStrength = float(object.value(QLatin1String("normalStrength")).toDouble(1.0));
         def.decalPath = object.value(QLatin1String("decal")).toString();
         def.decalMode = object.value(QLatin1String("decalMode")).toString(QStringLiteral("luminance"));
+        def.metallic = float(object.value(QLatin1String("metallic")).toDouble(0.0));
+        def.smoothness = float(object.value(QLatin1String("smoothness")).toDouble(0.5));
         def.trimBaked = object.value(QLatin1String("trimBaked")).toBool(false);
         if (d->materialIndex.contains(def.id))
             d->warnings.append(QStringLiteral("catalog.json: duplicate material %1").arg(quote(def.id)));

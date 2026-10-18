@@ -72,6 +72,9 @@ uniform bool uHasDecal;
 uniform sampler2D uDecal;
 uniform bool uDecalUseAlpha;
 
+uniform float uMetallic;
+uniform float uSmoothness;
+
 uniform float uAlbedoMean;      // luminance average of the albedo, used to keep paint brightness
 uniform float uAlbedoDetail;    // how strongly the albedo modulates the paint (0..1)
 uniform float uDecalStrength;   // white markings baked into the albedo
@@ -148,8 +151,11 @@ void main()
         color *= uExposure;
     } else {
         // Fixed-colour props (copper doodads, grey deck plating, engine glow) keep their own
-        // material colour: no livery tint and no exposure lift, or the copper turns pale.
-        color = uMaterialColor.rgb * albedoSample;
+        // material colour: no livery tint and no exposure lift, or the copper turns pale. The
+        // authored mix decides how much of the albedo counts (doodads are a 0.35 overlay).
+        vec3 base = uMaterialColor.rgb;
+        float mixAmount = clamp(uAlbedoMix, 0.0, 1.0);
+        color = mix(base, base * albedoSample, mixAmount);
     }
     // Near-white albedo pixels are only a weak fallback: without the authored decal they are
     // the grime highlights, not markings, so they must not wash a surface out.
@@ -180,7 +186,17 @@ void main()
     vec3 viewDir = normalize(uCameraPosition - vWorld);
     float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0) * 0.12;
 
-    vec3 lit = color * (ambient + 0.62 * key + 0.22 * fill + 0.16 * back) + vec3(rim);
+    // HDRP metals: the diffuse term dies down and a tight specular highlight takes over. That
+    // is what separates the brass doodads from flat plastic.
+    float metallic = clamp(uMetallic, 0.0, 1.0);
+    float smoothness = clamp(uSmoothness, 0.0, 1.0);
+    vec3 halfDir = normalize(viewDir + keyLight);
+    float specPower = mix(8.0, 320.0, smoothness);
+    float spec = pow(max(dot(normal, halfDir), 0.0), specPower);
+    vec3 specular = vec3(spec) * (0.04 + 0.85 * metallic) * (0.15 + 0.85 * smoothness) * 1.6;
+
+    vec3 diffuse = color * (1.0 - 0.55 * metallic);
+    vec3 lit = diffuse * (ambient + 0.62 * key + 0.22 * fill + 0.16 * back) + vec3(rim) + specular;
     fragColor = vec4(clamp(lit, 0.0, 1.0), 1.0);
 }
 )GLSL";
@@ -454,6 +470,8 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         program.setUniformValue("uDecalUseAlpha",
                                 material && material->decalMode == QLatin1String("alpha"));
         program.setUniformValue("uDecal", 3);
+        program.setUniformValue("uMetallic", material ? material->metallic : 0.0f);
+        program.setUniformValue("uSmoothness", material ? material->smoothness : 0.5f);
         if (hasDecal) {
             glActiveTexture(GL_TEXTURE3);
             glBindTexture(GL_TEXTURE_2D, decalId);
