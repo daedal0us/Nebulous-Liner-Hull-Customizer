@@ -24165,6 +24165,7 @@
    "metallic": 1.0,
    "smoothness": 0.4646,
    "maskMode": "trim",
+   "bareMask": "bare/0005.png",
    "normal": "normal/0005.png",
    "normalStrength": 1.0
   },
@@ -24209,6 +24210,7 @@
    "metallic": 0.9999,
    "smoothness": 0.467,
    "maskMode": "trim",
+   "bareMask": "bare/0007.png",
    "normal": "normal/0007.png",
    "normalStrength": 1.0
   },

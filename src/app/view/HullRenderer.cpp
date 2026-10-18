@@ -197,7 +197,7 @@ void main()
         color = painted * mix(vec3(1.0), detail, clamp(uAlbedoDetail, 0.0, 1.0));
         // Bare panels are metals lit by an environment this viewer has no probe for, so the
         // albedo is lifted toward the plate colour the game shows.
-        color = mix(color, mix(vec3(0.88), albedoSample, 0.45) * uExposure, bare);
+        color = mix(color, mix(vec3(0.95), albedoSample, 0.70) * uExposure, bare);
         if (uUseTint)
             color *= uTintColor.rgb;
         color *= uExposure;

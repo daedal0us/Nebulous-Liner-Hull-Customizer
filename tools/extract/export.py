@@ -386,6 +386,15 @@ def _interleave(red, green, blue):
     return values
 
 
+#: Bare-metal vent plates, keyed by exported albedo page and given in pixels of the 1024 px
+#: sheet. The louvred vents carry no distinguishing mask value, brightness or local contrast
+#: (all measured), so each one is read off the sheet and kept here by hand; the rects are
+#: confirmed visible on the model with --debug-view uv before being added.
+BARE_PANELS = {
+    "0005": [(648, 772, 734, 858)],
+    "0007": [(843, 72, 925, 152)],
+}
+
 def _interleave_rgba(red, green, blue, alpha):
     """Pack four channels into one RGBA payload."""
     values = bytearray(len(red) * 4)
@@ -572,6 +581,8 @@ class MaterialBuilder(object):
         mask, mask_origin = sources["mask"]
         if mask:
             self._build_mask(definition, mask, mask_origin)
+            self._build_bare(definition, definition["id"].split(":")[1],
+                             self.sizes["mask"])
         elif definition["paintable"]:
             # No authored stripe mask: an all black mask keeps the renderer on
             # the base paint everywhere instead of falling back to the trim tint.
@@ -742,6 +753,21 @@ class MaterialBuilder(object):
         self.png_cache[key] = relative
         return relative
 
+    def _build_bare(self, definition, page, size):
+        # Rasterises BARE_PANELS for one sheet; no map is written when the page has none.
+        rects = BARE_PANELS.get(page)
+        if not rects:
+            return
+        values = bytearray(size * size)
+        unit = size / 1024.0
+        for x0, y0, x1, y1 in rects:
+            for y in range(int(y0 * unit), min(int(y1 * unit), size)):
+                row = y * size
+                for x in range(int(x0 * unit), min(int(x1 * unit), size)):
+                    values[row + x] = 255
+        definition["bareMask"] = self._write("bare", definition, page, size, size, 1, values)
+        self.log("    bare %s <- %d vent rects" % (definition["id"], len(rects)))
+
     def _build_mask(self, definition, source, origin):
         try:
             name, width, height, channels, _fmt = self._sample("mask", source)
@@ -751,6 +777,9 @@ class MaterialBuilder(object):
             self.mask_sources[definition["id"]] = "failed"
             return
         red, green, blue, alpha = channels
+        self.log("    mask %s alpha: min %d mean %.1f  non255 %.1f%%"
+                 % (definition["id"], min(alpha), sum(alpha) / float(len(alpha)),
+                    100.0 * sum(1 for v in alpha if v != 255) / float(len(alpha))))
         stats = textures.channel_stats(red, green, blue, alpha)
         # Luminance masks (the authored _PaintMask is one) carry the stripe
         # pattern in every colour channel; averaging noise in the others would
@@ -1142,12 +1171,12 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
     log = log or Logger()
     sizes = dict(DEFAULT_SIZES, **(sizes or {}))
     started = time.time()
-    folders = ("mesh", "mask", "albedo", "normal", "decal")
+    folders = ("mesh", "mask", "albedo", "normal", "decal", "bare")
     for sub in folders:
         os.makedirs(os.path.join(out_dir, sub), exist_ok=True)
     for sub, suffix in (("mesh", ".nlmesh"), ("mask", ".png"),
                         ("albedo", ".png"), ("normal", ".png"),
-                        ("decal", ".png")):
+                        ("decal", ".png"), ("bare", ".png")):
         folder = os.path.join(out_dir, sub)
         for name in os.listdir(folder):
             if name.endswith(suffix):
