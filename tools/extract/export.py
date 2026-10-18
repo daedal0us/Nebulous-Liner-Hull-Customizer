@@ -141,13 +141,41 @@ def paintable_segments(graph, section):
     return segments
 
 
-def declares_paint_tint(graph, path_id):
-    """True when the material declares the property the tint pass writes."""
+_SHADER_PROPERTY_CACHE = {}
+
+
+def shader_properties(graph, shader_path):
+    """Property names the shader actually declares, cached by shader pathID."""
+    if shader_path not in _SHADER_PROPERTY_CACHE:
+        names = set()
+        parsed = (graph.value(shader_path) or {}).get("m_ParsedForm") or {}
+        for prop in (parsed.get("m_PropInfo") or {}).get("m_Props") or ():
+            if isinstance(prop, dict):
+                name = prop.get("m_Name") or prop.get("first")
+                if name:
+                    names.add(name)
+        _SHADER_PROPERTY_CACHE[shader_path] = names
+    return _SHADER_PROPERTY_CACHE[shader_path]
+
+
+def declares_paint_tint(graph, path_id, require_shader=False):
+    """True when the material declares the property the tint pass writes.
+
+    A material whose shader was swapped keeps the old tint values in m_Colors as dead
+    properties (Hull_Shader_NoPaint has no _BasePaintTint at all), so a strict check also
+    asks the shader. That is what tells the freighter bridge apart from the lineship one.
+    """
     properties = graph.value(path_id).get("m_SavedProperties") or {}
-    for entry in properties.get("m_Colors") or ():
-        if isinstance(entry, dict) and entry.get("first") == PAINT_TINT_PROPERTY:
-            return True
-    return False
+    declared = any(isinstance(entry, dict) and entry.get("first") == PAINT_TINT_PROPERTY
+                   for entry in properties.get("m_Colors") or ())
+    if not declared:
+        return False
+    if not require_shader:
+        return True
+    shader = hierarchy.pptr_path_id(graph.value(path_id).get("m_Shader"))
+    if not shader:
+        return True
+    return PAINT_TINT_PROPERTY in shader_properties(graph, shader)
 
 
 def declares_paint_mask(graph, path_id):
@@ -160,7 +188,7 @@ def declares_paint_mask(graph, path_id):
     return False
 
 
-def segment_materials(graph, segment):
+def segment_materials(graph, segment, require_shader=False):
     """Material pathIDs one segment component puts under the faction livery.
 
     Returns (materials, slots skipped for missing the paint tint property).
@@ -177,7 +205,7 @@ def segment_materials(graph, segment):
         info = graph.sf.by_path.get(path_id)
         if info is None or info.class_id != CLASS_MATERIAL:
             continue
-        if declares_paint_tint(graph, path_id):
+        if declares_paint_tint(graph, path_id, require_shader):
             materials.append(path_id)
         else:
             skipped.append(path_id)
@@ -211,7 +239,8 @@ def livery_materials(graph, hulls):
         for group in ("bows", "cores", "sterns", "superstructures"):
             for section in getattr(hull, group):
                 for segment in paintable_segments(graph, section):
-                    found, without_tint = segment_materials(graph, segment)
+                    found, without_tint = segment_materials(
+                        graph, segment, require_shader=(section.kind == "superstructure"))
                     skipped.update(without_tint)
                     if not found:
                         unresolved.append("%s %s" % (save_key, section.id))
@@ -1192,9 +1221,13 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
             "sterns": [section.id for section in hull.sterns],
             "superstructures": [section.id for section in hull.superstructures],
         }
-        # nodeMaterials stays empty: the shared superstructure pieces are tinted by the game in
-        # every hull type (Freighter Superstructure declares _BasePaintTint), so there is no
-        # per-type material difference to override.
+        if node_materials.get(save_key):
+            # Shared superstructure meshes bind a different material per hull type: the freighter
+            # bridge is Hull_Shader_NoPaint (authored brass), the lineship one is OSP_Hull_Proc
+            # (tinted). The piece keeps the preferred instance, so each type records its own.
+            entry["nodeMaterials"] = node_materials[save_key]
+            log("  %s: %d pieces override node materials" % (
+                save_key, len(node_materials[save_key])))
         hull_entries.append(entry)
 
     paintable_ids = {m["id"] for m in materials.definitions if m["paintable"]}
@@ -1292,6 +1325,9 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
 
     used_material_ids = {node["material"] for piece in catalog_pieces
                          for node in piece["nodes"] if node.get("material")}
+    for overrides in node_materials.values():
+        for table in overrides.values():
+            used_material_ids.update(table.values())
 
     catalog = {
         "formatVersion": 1,

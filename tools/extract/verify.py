@@ -417,13 +417,34 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                 found.add(material_id)
         return found
 
-    # Every superstructure piece is tinted by the game in all hull types (the freighter and the
-    # lineship bridge materials both declare _BasePaintTint), so the shipped catalog must keep
-    # the shared pieces livery instead of overriding them per hull type.
-    stale = [hull.get("id") for hull in hulls.values() if hull.get("nodeMaterials")]
-    report.check("no per-hull-type material overrides", not stale,
-                 "shared superstructure pieces are tinted in every hull type"
-                 if not stale else "; ".join(stale[:3]))
+    # The freighter bridge runs Hull_Shader_NoPaint (authored brass, no paint uniform) while the
+    # lineship bridge runs OSP_Hull_Proc (tinted). Both share the same mesh, so the catalog has to
+    # keep the per-hull-type override or the Bulk Hauler's bridge renders as clan colours.
+    livery_ids = {material["id"] for material in materials
+                  if material.get("materialRole") == "livery"}
+    bridge_issues = []
+    for hull_id in ("Stock/Bulk Hauler", "Stock/Container Hauler"):
+        overrides = (hulls.get(hull_id) or {}).get("nodeMaterials") or {}
+        for piece_id in ("p:42d07c1a", "p:59344a67"):
+            piece = pieces.get(piece_id)
+            if piece is None:
+                bridge_issues.append("%s: %s not exported" % (hull_id, piece_id))
+                continue
+            table = overrides.get(piece_id) or {}
+            used = set()
+            for index, node in enumerate(piece["nodes"]):
+                material_id = table.get(str(index)) or node["material"]
+                if material_id:
+                    used.add(material_id)
+            painted = sorted(used & livery_ids)
+            if hull_id == "Stock/Bulk Hauler" and painted:
+                bridge_issues.append("Bulk %s still livery %s" % (piece_id, painted))
+            if hull_id == "Stock/Container Hauler" and not painted:
+                bridge_issues.append("Container %s lost its livery" % piece_id)
+    report.check("freighter bridge stays brass, lineship bridge stays painted",
+                 not bridge_issues,
+                 "%d livery materials" % len(livery_ids) if not bridge_issues
+                 else "; ".join(bridge_issues[:3]))
 
     doodads = [material for material in materials
                if material["id"] == "t:0004"

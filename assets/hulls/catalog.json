@@ -33,7 +33,29 @@
     "p:59344a67",
     "p:9ebcea74",
     "p:c9d04445"
-   ]
+   ],
+   "nodeMaterials": {
+    "p:42d07c1a": {
+     "2": "t:0034",
+     "3": "t:0034",
+     "4": "t:0034"
+    },
+    "p:59344a67": {
+     "2": "t:0035",
+     "3": "t:0035",
+     "4": "t:0035"
+    },
+    "p:9ebcea74": {
+     "2": "t:0034",
+     "3": "t:0034",
+     "4": "t:0034"
+    },
+    "p:c9d04445": {
+     "2": "t:0034",
+     "3": "t:0034",
+     "4": "t:0034"
+    }
+   }
   },
   {
    "id": "Stock/Container Hauler",
@@ -24742,6 +24764,48 @@
    "normalStrength": 1.0,
    "decalMode": "alpha",
    "decal": "decal/0011.png"
+  },
+  {
+   "id": "t:0034",
+   "paintable": false,
+   "materialRole": "fixed",
+   "baseColor": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "albedo": "albedo/0004.png",
+   "albedoMode": "multiply",
+   "albedoMix": 1.0,
+   "mask": "mask/0004.png",
+   "maskChannel": "r",
+   "maskInvert": true,
+   "trimBaked": false,
+   "metallic": 1.0,
+   "smoothness": 0.4234,
+   "normal": "normal/0004.png",
+   "normalStrength": 1.0
+  },
+  {
+   "id": "t:0035",
+   "paintable": false,
+   "materialRole": "fixed",
+   "baseColor": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "albedo": "albedo/0018.png",
+   "albedoMode": "multiply",
+   "albedoMix": 1.0,
+   "mask": "mask/0018.png",
+   "maskChannel": "r",
+   "maskInvert": true,
+   "trimBaked": false,
+   "metallic": 0.9612,
+   "smoothness": 0.5102,
+   "normal": "normal/0018.png",
+   "normalStrength": 1.0
   }
  ]
 }

@@ -9,6 +9,10 @@ suspicious render can be traced to game data instead of guessed at.
     python -m tools.extract.inspect --bundle <stock-f2> --decal-slots
     python -m tools.extract.inspect --bundle <stock-f2> \
         --material "Lineship Doodads" --colors
+    python -m tools.extract.inspect --bundle <stock-f2> \
+        --hull "Stock/Bulk Hauler" --group superstructures --nested
+    python -m tools.extract.inspect --bundle <stock-f2> \
+        --material "Superstructure" --shaders
 """
 
 from __future__ import annotations
@@ -17,7 +21,13 @@ import argparse
 import re
 import sys
 
-from . import export, hierarchy, meshes, serialized, textures, unityfs
+from . import export, hierarchy, mathutil, meshes, serialized, textures, unityfs
+
+#: Unity classes that carry a nested prefab instance: one instance object names
+#: the parent transform and the source prefab, because the instance's own
+#: GameObjects are cloned at load time and never serialized in this file.
+CLASS_PREFAB_INSTANCE = 1001
+CLASS_PREFAB = 1002
 
 
 def open_scene(bundle_path):
@@ -65,7 +75,8 @@ def saved_properties(graph, path_id, field):
 
 def livery_roles(graph, hulls):
     """material pathID -> the role export.MaterialBuilder assigns."""
-    livery, _segments, _unresolved, _skipped = export.livery_materials(graph, hulls)
+    livery, _segments, _unresolved, _skipped, _unmasked = \
+        export.livery_materials(graph, hulls)
     return {path_id: "livery" for path_id in livery}
 
 
@@ -119,6 +130,149 @@ def node_rows(graph, section, mesh_cache):
             target["slots"] = len(material_paths)
             target["material"] = material
     return rows
+
+
+def shader_properties(graph, path_id):
+    """(shader name, property names the shader really declares) of a material.
+
+    A material keeps the m_Colors / m_TexEnvs entries of a shader it no longer
+    uses, so a leftover "_BasePaintTint" is no evidence that anything paints:
+    only m_ParsedForm.m_PropInfo lists the uniforms the shader actually has.
+    """
+    material = material_object(graph, path_id)
+    shader_id = hierarchy.pptr_path_id(material.get("m_Shader"))
+    if not shader_id:
+        return "", frozenset()
+    parsed = graph.value(shader_id).get("m_ParsedForm") or {}
+    props = (parsed.get("m_PropInfo") or {}).get("m_Props") or ()
+    return (parsed.get("m_Name") or "",
+            frozenset(item.get("m_Name") for item in props
+                      if isinstance(item, dict)))
+
+
+def declares(graph, path_id, field, wanted):
+    """True when one m_SavedProperties array of a material holds a property."""
+    properties = material_object(graph, path_id).get("m_SavedProperties") or {}
+    for entry in properties.get(field) or ():
+        if isinstance(entry, dict) and entry.get("first") == wanted:
+            return True
+    return False
+
+
+def nested_instances(graph):
+    """[(parent transform pathID, prefab asset path, root GameObject pathID)].
+
+    A nested prefab instance serializes no GameObjects of its own: one
+    PrefabInstance object names m_TransformParent plus the Prefab it clones,
+    whose m_Name is the asset path it came from (empty when the hierarchy lives
+    in this file, which m_RootGameObject then points at).
+    """
+    found = []
+    for info in graph.sf.objects_of(CLASS_PREFAB_INSTANCE):
+        value = graph.value(info.path_id)
+        prefab_id = hierarchy.pptr_path_id(value.get("m_SourcePrefab"))
+        path, root = "", 0
+        if prefab_id:
+            prefab = graph.value(prefab_id)
+            path = prefab.get("m_Name") or ""
+            root = hierarchy.pptr_path_id(prefab.get("m_RootGameObject"))
+        found.append((hierarchy.pptr_path_id(value.get("m_TransformParent")),
+                      path, root))
+    return found
+
+
+def y_range(mesh, position, rotation, scale):
+    """(min, max) Y of a mesh's vertices under one transform, or None."""
+    if not mesh.positions:
+        return None
+    values = [mathutil.transform_point(position, rotation, scale, point)[1]
+              for point in mesh.positions]
+    return min(values), max(values)
+
+
+def dump_nested(graph, hull, group, stream, mesh_cache):
+    """Every node of a group, its mesh / material / paint role and Y extent.
+
+    Nested prefab instances are reported as their own row (with the prefab asset
+    path) instead of being silently dropped by the transform walk.
+    """
+    instances = nested_instances(graph)
+    roles = livery_roles(graph, {hull.save_key: hull})
+    for section in getattr(hull, group):
+        space = hierarchy.SectionSpace(graph, section.root_go)
+        rows = list(graph.walk(section.root_go))
+        transforms = set()
+        print("\n-- section %s %r (%s) nodes=%d nested instances in file=%d"
+              % (section.id, section.debug_name, section.kind, len(rows),
+                 len(instances)), file=stream)
+        for depth, go in rows:
+            transforms.add(graph.transform_of_go.get(go, 0))
+            filters = graph.components_by_class_id(go, hierarchy.CLASS_MESH_FILTER)
+            mesh = None
+            material = None
+            if filters:
+                mesh_id = hierarchy.pptr_path_id(
+                    graph.value(filters[0]).get("m_Mesh"))
+                if mesh_id:
+                    try:
+                        mesh = meshes.read_mesh(graph.sf, mesh_id, mesh_cache)
+                    except Exception as exc:
+                        print("    mesh %d on %r skipped: %s"
+                              % (mesh_id, graph.name_of(go), exc), file=stream)
+                renderers = graph.components_by_class_id(
+                    go, hierarchy.CLASS_MESH_RENDERER)
+                if renderers:
+                    used = graph.value(renderers[0]).get("m_Materials") or ()
+                    material = (hierarchy.pptr_path_id(used[0]) if used else 0) or None
+            shader, props = shader_properties(graph, material) if material else ("", frozenset())
+            local = space.transform_of_game_object(graph, go)
+            world = hierarchy.world_transform(graph, go)
+            spans = []
+            for label, transform in (("yS", local), ("yW", world)):
+                span = y_range(mesh, *transform) if mesh else None
+                spans.append("%s=[%7.2f,%6.2f]" % (label, span[0], span[1])
+                             if span else "%s=?        " % label)
+            print("   %s%-26r mesh=%-28r mat=%-26r %s %s tint=%-3s shaderTint=%-3s "
+                  "shaderMask=%-3s shader=%r"
+                  % ("  " * depth, graph.name_of(go),
+                     mesh.name if mesh else "-",
+                     material_name(graph, material) if material else "-",
+                     spans[0], spans[1],
+                     "yes" if material and declares(graph, material, "m_Colors",
+                                                    "_BasePaintTint") else "no",
+                     "yes" if "_BasePaintTint" in props else "no",
+                     "yes" if "_PaintMask" in props else "no",
+                     shader), file=stream)
+        for parent, path, root in instances:
+            if parent not in transforms:
+                continue
+            stored = graph.name_of(root) if root else ""
+            print("   %-26r mesh=%s mat=%s prefab=%r %s"
+                  % ("(nested prefab)", "-", "-", path,
+                     "stored root %r" % stored if stored
+                     else "external: contents are not serialized here"),
+                  file=stream)
+
+
+def dump_shaders(graph, pattern, stream):
+    """Per material: shader name and the paint uniforms that shader declares."""
+    matcher = re.compile(pattern, re.IGNORECASE)
+    shown = 0
+    for info in graph.sf.objects_of(export.CLASS_MATERIAL):
+        name = material_name(graph, info.path_id)
+        if not matcher.search(name):
+            continue
+        shown += 1
+        shader, props = shader_properties(graph, info.path_id)
+        declared = [item for item in ("_BasePaintTint", "_StripePaintTint",
+                                      "_PaintMask", "_HullTint")
+                    if item in props]
+        stale = [item for item in ("_BasePaintTint", "_StripePaintTint")
+                 if declares(graph, info.path_id, "m_Colors", item)]
+        print("%-34r %-38r paints=%-52s leftover=%s"
+              % (name, shader, ",".join(declared) or "-",
+                 ",".join(stale) or "-"), file=stream)
+    print("\n%d matching materials" % shown, file=stream)
 
 
 def describe(graph, path_id, roles):
@@ -242,6 +396,13 @@ def main(argv=None):
                         help="print every node of the group with its material")
     parser.add_argument("--decal-slots", action="store_true",
                         help="print every material that declares a decal")
+    parser.add_argument("--nested", action="store_true",
+                        help="every node of the group with mesh, material, "
+                             "paint uniforms and Y extent (nested prefab "
+                             "instances are listed, not dropped)")
+    parser.add_argument("--shaders", action="store_true",
+                        help="per material: shader name and the paint uniforms "
+                             "that shader declares (vs leftover m_Colors)")
     parser.add_argument("--material", default=".", help="material name regex")
     parser.add_argument("--colors", action="store_true",
                         help="print m_Colors (and m_Floats) + albedo statistics")
@@ -276,6 +437,14 @@ def main(argv=None):
                              row["submeshes"] - 1, row["slots"],
                              describe(graph, row["material"], roles)),
                           file=stream)
+        if args.nested:
+            hull = hulls[args.hull]
+            print("\n=== %s %s: node table with paint uniforms ==="
+                  % (args.hull, args.group), file=stream)
+            dump_nested(graph, hull, args.group, stream, {})
+        if args.shaders:
+            print("\n=== material -> shader paint uniforms ===", file=stream)
+            dump_shaders(graph, args.material, stream)
         if args.colors:
             dump_colors(graph, args.material, stream, floats=args.floats)
     finally:
