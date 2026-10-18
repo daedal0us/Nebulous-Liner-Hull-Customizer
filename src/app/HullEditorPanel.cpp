@@ -1,7 +1,9 @@
 #include "HullEditorPanel.h"
 
+#include <QCollator>
 #include <QComboBox>
 #include <QFormLayout>
+#include <QSet>
 #include <QFrame>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -9,6 +11,8 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
+
+#include <algorithm>
 
 #include "nlhc/hull/DressingLayout.h"
 
@@ -26,6 +30,37 @@ QString segmentName(int segment)
         return QObject::tr("Stern");
     default:
         return QStringLiteral("?");
+    }
+}
+
+// Pieces come out of the catalog in prefab order (B, A, C ...). The game lists them
+// naturally, so sort by display name with numeric awareness (A, B, C / 1, 2, 3, 10).
+QStringList sortedPieceIds(const HullPackage *package, const QStringList &ids)
+{
+    if (!package || ids.isEmpty())
+        return ids;
+    QStringList sorted = ids;
+    QCollator collator;
+    collator.setNumericMode(true);
+    collator.setCaseSensitivity(Qt::CaseInsensitive);
+    std::sort(sorted.begin(), sorted.end(), [package, &collator](const QString &lhs, const QString &rhs) {
+        const Piece *left = package->piece(lhs);
+        const Piece *right = package->piece(rhs);
+        const QString leftName = left ? left->debugName : lhs;
+        const QString rightName = right ? right->debugName : rhs;
+        return collator.compare(leftName, rightName) < 0;
+    });
+    return sorted;
+}
+
+// Drop items that are no longer candidates (typically a stale "unknown (...)" fallback left
+// over from the previously selected hull type).
+void pruneToCandidates(QComboBox *box, const QStringList &candidateKeys)
+{
+    const QSet<QString> allowed(candidateKeys.begin(), candidateKeys.end());
+    for (int index = box->count() - 1; index >= 0; --index) {
+        if (!allowed.contains(box->itemData(index).toString()))
+            box->removeItem(index);
     }
 }
 
@@ -154,7 +189,8 @@ void HullEditorPanel::rebuildSegments()
             box->setEnabled(false);
             continue;
         }
-        const QStringList &ids = i == 0 ? m_hullType->bows : (i == 1 ? m_hullType->cores : m_hullType->sterns);
+        const QStringList ids = sortedPieceIds(m_package,
+            i == 0 ? m_hullType->bows : (i == 1 ? m_hullType->cores : m_hullType->sterns));
         for (const QString &id : ids) {
             const Piece *piece = m_package->piece(id);
             const QString label = piece ? QStringLiteral("%1  [%2]").arg(piece->debugName, piece->key.left(8))
@@ -256,7 +292,7 @@ void HullEditorPanel::rebuildSecondary()
         auto *pieceBox = new QComboBox(row);
         pieceBox->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
         pieceBox->setMinimumContentsLength(10);
-        for (const QString &id : m_hullType->superstructures) {
+        for (const QString &id : sortedPieceIds(m_package, m_hullType->superstructures)) {
             const Piece *piece = m_package->piece(id);
             pieceBox->addItem(piece ? piece->debugName : id, piece ? piece->key : id);
         }
@@ -336,15 +372,37 @@ void HullEditorPanel::syncFromConfig()
 {
     m_updating = true;
     for (int i = 0; i < 3; ++i) {
-        if (!m_segmentBoxes[i])
+        QComboBox *box = m_segmentBoxes[i];
+        if (!box)
             continue;
-        const int found = m_segmentBoxes[i]->findData(m_config.primary[i].key);
+
+        // Keep only real candidates so a previous hull type cannot leave entries behind.
+        QStringList candidateKeys;
+        candidateKeys.reserve(box->count());
+        for (int index = 0; index < box->count(); ++index) {
+            const QString key = box->itemData(index).toString();
+            if (m_package && m_package->piece(key))
+                candidateKeys.append(key);
+        }
+        if (m_hullType) {
+            const QStringList &ids = i == 0 ? m_hullType->bows : (i == 1 ? m_hullType->cores : m_hullType->sterns);
+            candidateKeys.clear();
+            for (const QString &id : ids) {
+                const Piece *piece = m_package ? m_package->piece(id) : nullptr;
+                if (piece)
+                    candidateKeys.append(piece->key);
+            }
+        }
+        pruneToCandidates(box, candidateKeys);
+        box->setEnabled(m_editable && box->count() > 0);
+
+        const int found = box->findData(m_config.primary[i].key);
         if (found >= 0) {
-            m_segmentBoxes[i]->setCurrentIndex(found);
+            box->setCurrentIndex(found);
         } else if (!m_config.primary[i].key.isEmpty()) {
-            m_segmentBoxes[i]->addItem(tr("unknown (%1)").arg(m_config.primary[i].key.left(8)),
-                                       m_config.primary[i].key);
-            m_segmentBoxes[i]->setCurrentIndex(m_segmentBoxes[i]->count() - 1);
+            box->addItem(tr("unknown (%1)").arg(m_config.primary[i].key.left(8)),
+                         m_config.primary[i].key);
+            box->setCurrentIndex(box->count() - 1);
         }
     }
     m_updating = false;

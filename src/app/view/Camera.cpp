@@ -17,7 +17,7 @@ float halfExtent(const Bounds &bounds)
 void OrbitCamera::frame(const Bounds &bounds)
 {
     m_target = bounds.center();
-    m_distance = halfExtent(bounds) * 1.6f;
+    m_distance = halfExtent(bounds) * 1.15f;
     m_yaw = 35.0f;
     m_pitch = 18.0f;
     m_defaultsTarget = m_target;

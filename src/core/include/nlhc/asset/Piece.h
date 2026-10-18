@@ -64,6 +64,8 @@ struct MaterialDef
     QString maskChannel = QStringLiteral("r");
     bool maskInvert = false;
     bool trimBaked = false;
+    QString normalPath;
+    float normalStrength = 1.0f;
 };
 
 struct HullTypeDef

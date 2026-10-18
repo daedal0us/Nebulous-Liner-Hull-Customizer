@@ -66,30 +66,36 @@ QImage OffscreenRenderer::renderSplit(const HullPackage *package, const Assembly
         functions->glEnable(GL_DEPTH_TEST);
         functions->glClearDepthf(1.0f);
 
-        const int splitX = int(size.width() * 0.45);
-        const int leftWidth = splitX;
-        const int rightWidth = size.width() - splitX;
+        const int width = size.width();
+        const int height = size.height();
+        const int topHeight = qBound(1, int(height * 0.45), height - 1);
+        const int bottomHeight = height - topHeight;
 
         SideCamera side;
         side.frame(assembly.bounds);
         OrbitCamera orbit;
         orbit.frame(assembly.bounds);
 
-        functions->glViewport(0, 0, leftWidth, size.height());
-        functions->glScissor(0, 0, leftWidth, size.height());
         functions->glEnable(GL_SCISSOR_TEST);
+
+        // Side view on top (GL origin is bottom-left).
+        functions->glViewport(0, bottomHeight, width, topHeight);
+        functions->glScissor(0, bottomHeight, width, topHeight);
         functions->glClearColor(0.11f, 0.12f, 0.14f, 1.0f);
         functions->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        renderer.draw(assembly, package, style,
-                      side.view(), side.projection(float(leftWidth) / float(size.height())));
+        renderer.draw(assembly, package, style, side.view(),
+                      side.projection(float(width) / float(topHeight)));
 
-        functions->glViewport(splitX, 0, rightWidth, size.height());
-        functions->glScissor(splitX, 0, rightWidth, size.height());
+        functions->glViewport(0, 0, width, bottomHeight);
+        functions->glScissor(0, 0, width, bottomHeight);
         functions->glClearColor(0.09f, 0.10f, 0.12f, 1.0f);
         functions->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        renderer.draw(assembly, package, style,
-                      orbit.view(), orbit.projection(float(rightWidth) / float(size.height())));
+        renderer.draw(assembly, package, style, orbit.view(),
+                      orbit.projection(float(width) / float(bottomHeight)));
 
+        functions->glScissor(0, bottomHeight - 1, width, 1);
+        functions->glClearColor(0.28f, 0.30f, 0.34f, 1.0f);
+        functions->glClear(GL_COLOR_BUFFER_BIT);
         functions->glDisable(GL_SCISSOR_TEST);
         functions->glFinish();
 

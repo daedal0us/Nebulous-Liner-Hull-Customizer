@@ -313,6 +313,8 @@ bool HullPackage::load(const QString &rootDir, QString *error)
         def.maskPath = object.value(QLatin1String("mask")).toString();
         def.maskChannel = object.value(QLatin1String("maskChannel")).toString(QStringLiteral("r"));
         def.maskInvert = object.value(QLatin1String("maskInvert")).toBool(false);
+    def.normalPath = object.value(QLatin1String("normal")).toString();
+    def.normalStrength = float(object.value(QLatin1String("normalStrength")).toDouble(1.0));
         def.trimBaked = object.value(QLatin1String("trimBaked")).toBool(false);
         if (d->materialIndex.contains(def.id))
             d->warnings.append(QStringLiteral("catalog.json: duplicate material %1").arg(quote(def.id)));

@@ -37,7 +37,8 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
 
 private:
-    bool inRightPane(int x) const;
+    bool inTopPane(int y) const;
+    int splitY() const;
     void applyStyleDefaults();
 
     const HullPackage *m_package = nullptr;

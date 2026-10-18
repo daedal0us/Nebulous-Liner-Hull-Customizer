@@ -60,9 +60,14 @@ void HullViewport::resetViews()
     update();
 }
 
-bool HullViewport::inRightPane(int x) const
+int HullViewport::splitY() const
 {
-    return x >= int(width() * 0.45);
+    return qBound(1, int(height() * 0.45), qMax(1, height() - 1));
+}
+
+bool HullViewport::inTopPane(int y) const
+{
+    return y < splitY();
 }
 
 void HullViewport::initializeGL()
@@ -81,26 +86,32 @@ void HullViewport::paintGL()
     functions->glClearDepthf(1.0f);
 
     const qreal dpr = devicePixelRatioF();
-    const int pixelWidth = int(width() * dpr);
-    const int pixelHeight = int(height() * dpr);
-    const int splitX = int(pixelWidth * 0.45);
-    const int rightWidth = pixelWidth - splitX;
-    const int leftWidth = splitX;
+    const int pixelWidth = qMax(1, int(width() * dpr));
+    const int pixelHeight = qMax(1, int(height() * dpr));
+    const int topHeight = qBound(1, int(pixelHeight * 0.45), pixelHeight - 1);
+    const int bottomHeight = pixelHeight - topHeight;
 
-    functions->glViewport(0, 0, leftWidth, pixelHeight);
-    functions->glScissor(0, 0, leftWidth, pixelHeight);
+    // OpenGL's origin is bottom-left: the side view occupies the upper band.
     functions->glEnable(GL_SCISSOR_TEST);
+
+    functions->glViewport(0, bottomHeight, pixelWidth, topHeight);
+    functions->glScissor(0, bottomHeight, pixelWidth, topHeight);
     functions->glClearColor(0.11f, 0.12f, 0.14f, 1.0f);
     functions->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     m_renderer.draw(m_assembly, m_package, m_style, m_side.view(),
-                    m_side.projection(float(leftWidth) / float(qMax(1, height()))));
+                    m_side.projection(float(pixelWidth) / float(topHeight)));
 
-    functions->glViewport(splitX, 0, rightWidth, pixelHeight);
-    functions->glScissor(splitX, 0, rightWidth, pixelHeight);
+    functions->glViewport(0, 0, pixelWidth, bottomHeight);
+    functions->glScissor(0, 0, pixelWidth, bottomHeight);
     functions->glClearColor(0.09f, 0.10f, 0.12f, 1.0f);
     functions->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     m_renderer.draw(m_assembly, m_package, m_style, m_orbit.view(),
-                    m_orbit.projection(float(rightWidth) / float(qMax(1, height()))));
+                    m_orbit.projection(float(pixelWidth) / float(bottomHeight)));
+
+    // 1px separator between the two panes.
+    functions->glScissor(0, bottomHeight - 1, pixelWidth, 1);
+    functions->glClearColor(0.28f, 0.30f, 0.34f, 1.0f);
+    functions->glClear(GL_COLOR_BUFFER_BIT);
 
     functions->glDisable(GL_SCISSOR_TEST);
 }
@@ -125,17 +136,20 @@ void HullViewport::mouseMoveEvent(QMouseEvent *event)
     const QPoint delta = pos - m_lastPos;
     m_lastPos = pos;
 
+    const bool top = inTopPane(pos.y());
+    const float paneHeight = float(top ? splitY() : qMax(1, height() - splitY()));
+
     if (m_buttons & Qt::LeftButton) {
-        if (inRightPane(pos.x()))
+        if (!top)
             m_orbit.orbit(-float(delta.x()) * 0.4f, float(delta.y()) * 0.4f);
         else
-            m_side.pan(float(delta.x()), float(delta.y()), float(height()));
+            m_side.pan(float(delta.x()), float(delta.y()), paneHeight);
         update();
     } else if (m_buttons & (Qt::MiddleButton | Qt::RightButton)) {
-        if (inRightPane(pos.x()))
-            m_orbit.pan(float(delta.x()), float(delta.y()), float(height()));
+        if (!top)
+            m_orbit.pan(float(delta.x()), float(delta.y()), paneHeight);
         else
-            m_side.pan(float(delta.x()), float(delta.y()), float(height()));
+            m_side.pan(float(delta.x()), float(delta.y()), paneHeight);
         update();
     }
     QOpenGLWidget::mouseMoveEvent(event);
@@ -151,10 +165,10 @@ void HullViewport::mouseReleaseEvent(QMouseEvent *event)
 void HullViewport::mouseDoubleClickEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
-        if (inRightPane(event->position().toPoint().x()))
-            m_orbit.reset();
-        else
+        if (inTopPane(event->position().toPoint().y()))
             m_side.reset();
+        else
+            m_orbit.reset();
         update();
     }
     QOpenGLWidget::mouseDoubleClickEvent(event);
@@ -166,10 +180,10 @@ void HullViewport::wheelEvent(QWheelEvent *event)
     if (steps == 0.0f)
         return;
     const float factor = qPow(0.88f, steps);
-    if (inRightPane(event->position().toPoint().x()))
-        m_orbit.zoom(factor);
-    else
+    if (inTopPane(event->position().toPoint().y()))
         m_side.zoom(factor);
+    else
+        m_orbit.zoom(factor);
     update();
     event->accept();
 }

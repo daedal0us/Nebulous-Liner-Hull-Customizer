@@ -64,6 +64,10 @@ uniform int uMaskChannel;
 uniform bool uMaskInvert;
 uniform bool uUseVertexTrim;
 
+uniform bool uHasNormalMap;
+uniform sampler2D uNormalMap;
+uniform float uNormalStrength;
+
 uniform bool uOutlinePass;
 uniform vec3 uOutlineColor;
 uniform vec3 uCameraPosition;
@@ -88,6 +92,25 @@ void main()
     }
 
     vec3 normal = normalize(vNormal);
+    if (uHasNormalMap) {
+        // Meshes carry no tangents: build a TBN from screen space derivatives.
+        vec3 dp1 = dFdx(vWorld);
+        vec3 dp2 = dFdy(vWorld);
+        vec2 duv1 = dFdx(vUv);
+        vec2 duv2 = dFdy(vUv);
+        vec3 dp2perp = cross(dp2, normal);
+        vec3 dp1perp = cross(normal, dp1);
+        vec3 tangent = dp2perp * duv1.x + dp1perp * duv2.x;
+        vec3 bitangent = dp2perp * duv1.y + dp1perp * duv2.y;
+        float scale = inversesqrt(max(dot(tangent, tangent), dot(bitangent, bitangent)));
+        if (scale > 0.0) {
+            tangent *= scale;
+            bitangent *= scale;
+            vec3 sampled = texture(uNormalMap, vUv).xyz * 2.0 - 1.0;
+            sampled.xy *= uNormalStrength;
+            normal = normalize(mat3(tangent, bitangent, normal) * sampled);
+        }
+    }
     if (!gl_FrontFacing)
         normal = -normal;
 
@@ -262,12 +285,13 @@ GLuint HullRenderer::texture(const HullPackage *package, const QString &relative
         const QImage rgba = image.convertToFormat(QImage::Format_RGBA8888);
         glGenTextures(1, &id);
         glBindTexture(GL_TEXTURE_2D, id);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, rgba.width(), rgba.height(), 0, GL_RGBA,
                      GL_UNSIGNED_BYTE, rgba.constBits());
+        glGenerateMipmap(GL_TEXTURE_2D);
     }
     m_textures.insert(relativePath, id);
     return id;
@@ -293,6 +317,7 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
     program.setUniformValue("uCameraPosition", view.inverted().column(3).toVector3D());
     program.setUniformValue("uAlbedo", 0);
     program.setUniformValue("uMask", 1);
+    program.setUniformValue("uNormalMap", 2);
 
     for (const DrawItem &item : assembly.items) {
         if (!item.mesh)
@@ -334,6 +359,16 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         if (hasMask) {
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, maskId);
+        }
+
+        const QString normalPath = material ? material->normalPath : QString();
+        const GLuint normalId = gpu->hasUv ? texture(package, normalPath) : 0;
+        const bool hasNormalMap = normalId != 0;
+        program.setUniformValue("uHasNormalMap", hasNormalMap);
+        program.setUniformValue("uNormalStrength", material ? material->normalStrength : 1.0f);
+        if (hasNormalMap) {
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, normalId);
         }
 
         program.setUniformValue("uModel", item.world);
