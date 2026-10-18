@@ -151,6 +151,14 @@ void main()
         // Dividing by the texture mean keeps the paint at its authored brightness instead of
         // darkening every surface by the average of the detail map.
         vec3 painted = mix(uBaseColor.rgb, uTrimColor.rgb, trim);
+        // The hull atlas carries near-white panels (vent grilles, radiator stripes) that the game
+        // leaves unpainted. Their albedo is the colour, so blend it back over the paint.
+        float whitePanel = smoothstep(0.80, 0.94,
+            dot(albedoSample, vec3(0.2990, 0.5870, 0.1140)));
+        // A flat white colour map carries no panel information: skip it so the paint colour still
+        // drives the surface (the demo assembly uses a 1x1 white albedo).
+        float panelGate = 1.0 - step(0.95, uAlbedoMean);
+        painted = mix(painted, albedoSample, whitePanel * panelGate);
         if (uMaskKeep > 0.5) {
             // The mask only says where paint goes; the rest keeps its authored albedo, which is
             // what makes a brass truss sit inside an otherwise painted bridge.
