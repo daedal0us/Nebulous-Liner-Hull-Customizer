@@ -303,25 +303,15 @@ class SerializedFile(object):
         """pathID -> MonoScript pathID for every MonoBehaviour instance."""
         result = {}
         for info in self.by_class.get(114, ()):
-            entry = self.types[info.type_id]
-            tree = entry.tree
-            if tree is None:
-                continue
-            node = None
-            for child in tree.root.children:
-                if child.name == "m_Script":
-                    node = child
-                    break
-            if node is None:
+            if self.types[info.type_id].tree is None:
                 continue
             try:
-                value = typetree.read_value(self.reader(info), node)
+                value = self.deserialize(info)
             except Exception:
                 continue
-            if isinstance(value, dict):
-                path_id = value.get("m_PathID", 0)
-                if path_id:
-                    result[info.path_id] = path_id
+            pptr = value.get("m_Script")
+            if isinstance(pptr, dict) and pptr.get("m_PathID"):
+                result[info.path_id] = pptr["m_PathID"]
         return result
 
     def text_assets(self):

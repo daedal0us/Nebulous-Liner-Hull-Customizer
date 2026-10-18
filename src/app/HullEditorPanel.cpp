@@ -48,6 +48,7 @@ HullEditorPanel::HullEditorPanel(QWidget *parent)
     for (int i = 0; i < 3; ++i) {
         auto *box = new QComboBox(segmentsBox);
         box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        box->setMinimumContentsLength(12);
         connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, i](int index) {
             if (m_updating || !m_segmentBoxes[i])
                 return;
@@ -170,6 +171,8 @@ void HullEditorPanel::rebuildDressing()
             rowLayout->setContentsMargins(0, 0, 0, 0);
             auto *label = new QLabel(QStringLiteral("%1 · %2").arg(segmentName(segment)).arg(point.index), row);
             auto *box = new QComboBox(row);
+            box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+            box->setMinimumContentsLength(10);
             for (int i = 0; i < point.variantNames.size(); ++i)
                 box->addItem(QStringLiteral("%1 %2").arg(i + 1).arg(point.variantNames.at(i)), i);
             if (box->count() == 0) {
@@ -231,6 +234,8 @@ void HullEditorPanel::rebuildSecondary()
         rowLayout->setContentsMargins(0, 0, 0, 0);
 
         auto *pieceBox = new QComboBox(row);
+        pieceBox->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        pieceBox->setMinimumContentsLength(10);
         for (const QString &id : m_hullType->superstructures) {
             const Piece *piece = m_package->piece(id);
             pieceBox->addItem(piece ? piece->debugName : id, id);

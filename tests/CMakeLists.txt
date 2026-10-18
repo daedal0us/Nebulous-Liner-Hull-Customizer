@@ -12,3 +12,7 @@ nlhc_add_test(tst_fleet tst_fleet.cpp)
 nlhc_add_test(tst_package tst_package.cpp MockAssets.h)
 nlhc_add_test(tst_assembler tst_assembler.cpp MockAssets.h)
 nlhc_add_test(tst_validate tst_validate.cpp MockAssets.h)
+
+qt_add_executable(tst_render_smoke tst_render_smoke.cpp)
+target_link_libraries(tst_render_smoke PRIVATE Qt6::Test NLHCRender)
+add_test(NAME tst_render_smoke COMMAND tst_render_smoke)

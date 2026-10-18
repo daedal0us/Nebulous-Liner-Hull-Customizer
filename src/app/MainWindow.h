@@ -30,9 +30,18 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
+    bool openFleet(const QString &path);
+    void selectShipByIndex(int row);
+    QString debugLayoutSummary() const;
+
+private:
+    void applySplitterRatio();
+
 protected:
     void changeEvent(QEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     void buildUi();
@@ -99,6 +108,8 @@ private:
     QStringList m_recentFiles;
     int m_currentRow = -1;
     bool m_handlingLanguageChange = false;
+    bool m_splitterSized = false;
+    bool m_userAdjustedSplitter = false;
 };
 
 } // namespace nlhc

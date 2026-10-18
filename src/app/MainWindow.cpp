@@ -19,14 +19,18 @@
 #include <QMessageBox>
 #include <QRandomGenerator>
 #include <QScrollArea>
+#include <QScrollArea>
 #include <QSettings>
+#include <QShowEvent>
 #include <QSortFilterProxyModel>
+#include <QTimer>
 #include <QSplitter>
 #include <QStatusBar>
 #include <QTableView>
 #include <QToolBar>
 #include <QVBoxLayout>
 
+#include "DiagnosticText.h"
 #include "HullEditorPanel.h"
 #include "ShipListModel.h"
 #include "StylePanel.h"
@@ -50,6 +54,7 @@ QString assetProbePath()
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    resize(1440, 900);
     QSettings settings;
     m_recentFiles = settings.value(QStringLiteral("files/recent")).toStringList();
 
@@ -113,11 +118,15 @@ void MainWindow::buildUi()
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     table->horizontalHeader()->setStretchLastSection(false);
     table->verticalHeader()->hide();
-    table->setColumnWidth(0, 34);
-    table->setColumnWidth(1, 170);
-    table->setColumnWidth(2, 140);
-    table->setColumnWidth(3, 60);
-    table->setColumnWidth(4, 60);
+    table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
+    table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+    table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
+    table->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Fixed);
+    table->setColumnWidth(0, 32);
+    table->setColumnWidth(3, 54);
+    table->setColumnWidth(4, 54);
+    table->setMinimumWidth(240);
     connect(table->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
             [this](const QModelIndex &current, const QModelIndex &) {
                 if (current.isValid())
@@ -131,6 +140,7 @@ void MainWindow::buildUi()
 
     auto *rightScroll = new QScrollArea(this);
     rightScroll->setWidgetResizable(true);
+    rightScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     auto *rightPanel = new QWidget(rightScroll);
     auto *rightLayout = new QVBoxLayout(rightPanel);
     m_editor = new HullEditorPanel(rightPanel);
@@ -161,7 +171,11 @@ void MainWindow::buildUi()
     m_splitter->setStretchFactor(0, 0);
     m_splitter->setStretchFactor(1, 1);
     m_splitter->setStretchFactor(2, 0);
-    m_splitter->setSizes({320, 720, 380});
+    m_splitter->setSizes({300, 760, 360});
+    m_splitter->setChildrenCollapsible(false);
+    connect(m_splitter, &QSplitter::splitterMoved, this, [this] { m_userAdjustedSplitter = true; });
+    leftPanel->setMinimumWidth(240);
+    rightScroll->setMinimumWidth(320);
     setCentralWidget(m_splitter);
 
     m_diagnosticList = new QListWidget(this);
@@ -303,6 +317,19 @@ void MainWindow::applyLanguage(i18n::Language language)
     m_handlingLanguageChange = false;
     if (row >= 0)
         selectShip(row);
+}
+
+void MainWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    if (m_splitter && !m_splitterSized) {
+        m_splitterSized = true;
+        QTimer::singleShot(0, this, [this] {
+            applySplitterRatio();
+            if (m_diagnosticDock)
+                resizeDocks({m_diagnosticDock}, {160}, Qt::Vertical);
+        });
+    }
 }
 
 void MainWindow::changeEvent(QEvent *event)
@@ -478,6 +505,42 @@ void MainWindow::closeEvent(QCloseEvent *event)
         event->ignore();
 }
 
+bool MainWindow::openFleet(const QString &path)
+{
+    return openFile(path);
+}
+
+void MainWindow::applySplitterRatio()
+{
+    if (!m_splitter || m_userAdjustedSplitter)
+        return;
+    const int width = qMax(m_splitter->width(), 600);
+    const int left = int(width * 0.22);
+    const int right = int(width * 0.27);
+    m_splitter->setSizes({left, width - left - right, right});
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    applySplitterRatio();
+}
+
+QString MainWindow::debugLayoutSummary() const
+{
+    QString summary = QStringLiteral("window=%1x%2").arg(width()).arg(height());
+    if (m_splitter)
+        summary += QStringLiteral(" splitter=%1").arg(QString::number(m_splitter->width()));
+    if (m_viewport)
+        summary += QStringLiteral(" viewport=%1x%2").arg(m_viewport->width()).arg(m_viewport->height());
+    return summary;
+}
+
+void MainWindow::selectShipByIndex(int row)
+{
+    selectShip(row);
+}
+
 void MainWindow::selectShip(int row)
 {
     m_currentRow = row;
@@ -506,10 +569,10 @@ void MainWindow::refreshEditor()
         m_stylePanel->setHullTint(config->hullTint);
     if (config)
         m_stylePanel->setTextureVariation(config->textureVariation);
-    if (!m_packageError.isEmpty())
-        statusBar()->showMessage(m_packageError);
-    else if (!ship.editable)
-        statusBar()->showMessage(ship.readOnlyReason);
+    if (!ship.editable)
+        statusBar()->showMessage(readOnlyReasonText(ship, m_package), 8000);
+    else if (!m_packageError.isEmpty())
+        statusBar()->showMessage(m_packageError, 8000);
 }
 
 void MainWindow::refreshAssembly()
@@ -544,7 +607,7 @@ void MainWindow::refreshDiagnostics()
     if (config && m_package.isValid())
         diagnostics = checkConfig(m_package, ship.hullType, *config);
     for (const Diagnostic &diagnostic : std::as_const(diagnostics)) {
-        auto *item = new QListWidgetItem(describeDiagnostic(diagnostic), m_diagnosticList);
+        auto *item = new QListWidgetItem(diagnosticText(diagnostic), m_diagnosticList);
         if (diagnostic.severity == Severity::Error)
             item->setForeground(QColor(0xd0, 0x4a, 0x3a));
         else if (diagnostic.severity == Severity::Warning)
