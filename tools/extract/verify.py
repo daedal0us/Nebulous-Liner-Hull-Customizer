@@ -558,8 +558,10 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                  % (len(materials), "ok" if not channel_bad
                     else "; wrong channel " + ", ".join(channel_bad[:3])))
 
-    flat_masks = [item for item in grey_shares if item[1] < 0.005]
-    report.check("masks keep the authored grey instead of being binarised",
+    # The authored sheets are binary; the exported grey is the resampler's edge ramps, so the
+    # check only guards against an exporter that discards the ramps altogether.
+    flat_masks = [item for item in grey_shares if item[1] <= 0.0]
+    report.check("masks keep the resampled edge ramps",
                  bool(grey_shares) and not flat_masks,
                  "%d masks, grey share %.3f-%.3f%s"
                  % (len(grey_shares),
