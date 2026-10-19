@@ -41,19 +41,10 @@ StylePanel::StylePanel(QWidget *parent)
     m_tintEnabled = new QCheckBox(this);
     m_tintLabel = new QLabel(this);
 
-    auto *reroll = new QPushButton(this);
-    reroll->setText(tr("Re-roll"));
-    connect(reroll, &QPushButton::clicked, this, &StylePanel::textureVariationRerollRequested);
-
     auto *baseLabel = new QLabel(this);
     baseLabel->setText(tr("Base color"));
     auto *trimLabel = new QLabel(this);
     trimLabel->setText(tr("Trim color"));
-    auto *variationTitle = new QLabel(this);
-    variationTitle->setText(tr("Texture variation"));
-
-    m_variationLabel = new QLabel(QStringLiteral("-"), this);
-
     layout->addWidget(baseLabel, 0, 0);
     layout->addWidget(m_baseButton, 0, 1);
     layout->addWidget(trimLabel, 1, 0);
@@ -62,9 +53,6 @@ StylePanel::StylePanel(QWidget *parent)
     layout->addWidget(m_tintSlider, 2, 1);
     layout->addWidget(m_tintEnabled, 2, 2);
     layout->addWidget(m_tintLabel, 2, 3);
-    layout->addWidget(variationTitle, 3, 0);
-    layout->addWidget(m_variationLabel, 3, 1, 1, 2);
-    layout->addWidget(reroll, 3, 3);
     layout->setColumnStretch(1, 1);
 
     connect(m_tintSlider, &QSlider::valueChanged, this, [this](int value) {
@@ -102,14 +90,6 @@ void StylePanel::setHullTint(const QColor &tint)
     m_tintSlider->setValue(int(qRound(tint.lightnessF() * 100.0f)));
     m_tintSlider->blockSignals(false);
     updateLabels();
-}
-
-void StylePanel::setTextureVariation(const QVector3D &variation)
-{
-    m_variationLabel->setText(QStringLiteral("%1, %2, %3")
-                                  .arg(variation.x(), 0, 'f', 1)
-                                  .arg(variation.y(), 0, 'f', 1)
-                                  .arg(variation.z(), 0, 'f', 1));
 }
 
 void StylePanel::pickColor(bool trim)

@@ -437,11 +437,6 @@
 <context>
     <name>nlhc::StylePanel</name>
     <message>
-        <location filename="../src/app/StylePanel.cpp" line="45"/>
-        <source>Re-roll</source>
-        <translation>重新随机</translation>
-    </message>
-    <message>
         <location filename="../src/app/StylePanel.cpp" line="49"/>
         <location filename="../src/app/StylePanel.cpp" line="118"/>
         <source>Base color</source>
@@ -452,11 +447,6 @@
         <location filename="../src/app/StylePanel.cpp" line="118"/>
         <source>Trim color</source>
         <translation>装饰色</translation>
-    </message>
-    <message>
-        <location filename="../src/app/StylePanel.cpp" line="53"/>
-        <source>Texture variation</source>
-        <translation>贴图变化</translation>
     </message>
     <message>
         <location filename="../src/app/StylePanel.cpp" line="61"/>

@@ -22,11 +22,9 @@ public:
     const RenderStyle &style() const { return m_style; }
 
     void setHullTint(const QColor &tint);
-    void setTextureVariation(const QVector3D &variation);
 
 signals:
     void styleChanged(const nlhc::RenderStyle &style);
-    void textureVariationRerollRequested();
 
 private:
     void pickColor(bool trim);
@@ -39,7 +37,6 @@ private:
     QSlider *m_tintSlider = nullptr;
     QCheckBox *m_tintEnabled = nullptr;
     QLabel *m_tintLabel = nullptr;
-    QLabel *m_variationLabel = nullptr;
 };
 
 } // namespace nlhc

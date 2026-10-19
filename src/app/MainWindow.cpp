@@ -163,8 +163,17 @@ void MainWindow::buildUi()
         QSettings settings;
         settings.setValue(QStringLiteral("style/baseColor"), newStyle.baseColor.name());
         settings.setValue(QStringLiteral("style/trimColor"), newStyle.trimColor.name());
+        // Base and trim are preview-only, but the hull tint is a fleet field.
+        const int row = currentShipRow();
+        if (row < 0)
+            return;
+        auto config = m_document.hullConfig(row);
+        if (!config || config->hullTint == newStyle.hullTint)
+            return;
+        config->hullTint = newStyle.hullTint;
+        if (m_document.setHullConfig(row, *config))
+            updateWindowTitle();
     });
-    connect(m_stylePanel, &StylePanel::textureVariationRerollRequested, this, &MainWindow::rerollTextureVariation);
     rightLayout->addWidget(m_editor, 1);
     rightLayout->addWidget(m_stylePanel);
     rightScroll->setWidget(rightPanel);
@@ -728,8 +737,6 @@ void MainWindow::refreshEditor()
     }
     if (config)
         m_stylePanel->setHullTint(config->hullTint);
-    if (config)
-        m_stylePanel->setTextureVariation(config->textureVariation);
     if (!ship.editable)
         statusBar()->showMessage(readOnlyReasonText(ship, m_package), 8000);
     else if (!m_packageError.isEmpty())
@@ -790,7 +797,6 @@ void MainWindow::applyConfig(const RandomHullConfig &config)
     if (m_document.setHullConfig(row, config)) {
         refreshAssembly();
         refreshDiagnostics();
-        m_stylePanel->setTextureVariation(config.textureVariation);
         updateWindowTitle();
     }
 }
@@ -804,7 +810,11 @@ void MainWindow::randomizeCurrent()
     if (!ship.editable)
         return;
     QRandomGenerator generator = QRandomGenerator::securelySeeded();
-    const RandomHullConfig config = randomizeConfig(m_package, ship.hullType, generator);
+    RandomHullConfig config = randomizeConfig(m_package, ship.hullType, generator);
+    // The tint is a paint choice the slider owns; re-rolling the hull must not
+    // recolour the ship as a side effect.
+    if (const auto previous = m_document.hullConfig(row))
+        config.hullTint = previous->hullTint;
     m_document.setHullConfig(row, config);
     refreshEditor();
     refreshAssembly();
@@ -819,7 +829,10 @@ void MainWindow::randomizeFleet()
         const ShipRecord ship = m_document.ship(row);
         if (!ship.editable)
             continue;
-        m_document.setHullConfig(row, randomizeConfig(m_package, ship.hullType, generator));
+        RandomHullConfig config = randomizeConfig(m_package, ship.hullType, generator);
+        if (const auto previous = m_document.hullConfig(row))
+            config.hullTint = previous->hullTint;
+        m_document.setHullConfig(row, config);
     }
     refreshEditor();
     refreshAssembly();
@@ -849,24 +862,6 @@ void MainWindow::copyToSameType()
     statusBar()->showMessage(tr("Applied hull to %1 ship(s).").arg(applied), 4000);
     refreshEditor();
     refreshAssembly();
-    updateWindowTitle();
-}
-
-void MainWindow::rerollTextureVariation()
-{
-    const int row = currentShipRow();
-    if (row < 0)
-        return;
-    auto config = m_document.hullConfig(row);
-    if (!config)
-        return;
-    QRandomGenerator generator = QRandomGenerator::securelySeeded();
-    const auto randomAxis = [&generator] {
-        return float(generator.generateDouble() * 2000.0 - 1000.0);
-    };
-    config->textureVariation = QVector3D(randomAxis(), randomAxis(), randomAxis());
-    m_document.setHullConfig(row, *config);
-    m_stylePanel->setTextureVariation(config->textureVariation);
     updateWindowTitle();
 }
 

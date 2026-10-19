@@ -71,7 +71,6 @@ private:
     void randomizeCurrent();
     void randomizeFleet();
     void copyToSameType();
-    void rerollTextureVariation();
 
     void updateRecentFiles(const QString &path = QString());
     void updateWindowTitle();
