@@ -794,16 +794,6 @@ void MainWindow::refreshDiagnostics()
     }
     if (diagnostics.isEmpty())
         m_diagnosticList->addItem(tr("No problems detected."));
-    // Crash-level findings are worth interrupting for, even when nothing was
-    // edited since the fleet was opened.
-    for (const Diagnostic &diagnostic : std::as_const(diagnostics)) {
-        if (diagnostic.code == QLatin1String(diag::SecondarySnapOutOfRange)
-            || diagnostic.code == QLatin1String(diag::SecondarySegmentOutOfRange)) {
-            if (m_diagnosticDock && !m_diagnosticDock->isVisible())
-                m_diagnosticDock->show();
-            break;
-        }
-    }
     if (m_repairAction)
         m_repairAction->setEnabled(ship.editable && !diagnostics.isEmpty());
 }
@@ -843,9 +833,8 @@ bool MainWindow::remediateSuperstructures(int row)
         return false;
 
     // A superstructure aimed at a mount point the segment does not have would
-    // crash the game, so drop it here rather than let it reach a save. The dock
-    // opens and the status bar says what happened, because silently editing the
-    // fleet would be worse.
+    // crash the game, so drop it here rather than let it reach a save. The status
+    // bar says what happened; the dock stays closed unless the user opens it.
     m_remediating = true;
     for (const int segment : std::as_const(segments)) {
         m_editor->disableSecondary(segment);
@@ -854,8 +843,6 @@ bool MainWindow::remediateSuperstructures(int row)
                                  10000);
     }
     m_remediating = false;
-    if (m_diagnosticDock && !m_diagnosticDock->isVisible())
-        m_diagnosticDock->show();
     refreshAssembly();
     refreshDiagnostics();
     return true;
