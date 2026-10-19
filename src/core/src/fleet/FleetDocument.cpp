@@ -59,6 +59,34 @@ int childInt(const QDomElement &parent, const QString &tag, int fallback)
     return ok ? value : fallback;
 }
 
+// Copies the fleet beside itself before it is rewritten. A folder that refuses the
+// copy (read-only media, a security suite guarding the save folder) must not cost
+// the user the save, so the reason is handed back instead of aborting.
+bool copyForBackup(const QString &source, const QString &target, QString *reason)
+{
+    QFile::remove(target);
+
+    QFile from(source);
+    if (!from.open(QIODevice::ReadOnly)) {
+        *reason = from.errorString();
+        return false;
+    }
+
+    QFile to(target);
+    if (!to.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        *reason = to.errorString();
+        return false;
+    }
+
+    const QByteArray payload = from.readAll();
+    if (payload.isEmpty() || to.write(payload) != payload.size() || !to.flush()) {
+        *reason = to.errorString();
+        to.remove();
+        return false;
+    }
+    return true;
+}
+
 float childFloat(const QDomElement &parent, const QString &tag, float fallback)
 {
     const QDomElement element = childElement(parent, tag);
@@ -267,13 +295,16 @@ bool FleetDocument::load(const QString &path, QVector<Diagnostic> *diagnostics, 
     return true;
 }
 
-bool FleetDocument::save(const QString &path, QString *error)
+bool FleetDocument::save(const QString &path, QString *error, QString *notice)
 {
     const auto fail = [error](const QString &message) {
         if (error)
             *error = message;
         return false;
     };
+
+    if (notice)
+        notice->clear();
 
     if (!d->loaded)
         return fail(QStringLiteral("no document loaded"));
@@ -282,10 +313,9 @@ bool FleetDocument::save(const QString &path, QString *error)
         return fail(QStringLiteral("no target path"));
 
     if (QFileInfo::exists(target)) {
-        const QString backup = target + QStringLiteral(".bak");
-        QFile::remove(backup);
-        if (!QFile::copy(target, backup))
-            return fail(QStringLiteral("cannot create backup %1").arg(backup));
+        QString reason;
+        if (!copyForBackup(target, target + QStringLiteral(".bak"), &reason) && notice)
+            *notice = reason;
     }
 
     const QByteArray payload = d->document.toByteArray(2);

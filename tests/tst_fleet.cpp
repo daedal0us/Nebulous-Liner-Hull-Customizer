@@ -73,6 +73,7 @@ private slots:
     void preservesUnknownContent();
     void changesOnlyTheRequestedValue();
     void keepsBackupBeforeOverwrite();
+    void savesEvenWhenTheBackupIsBlocked();
     void reportsMissingHullConfig();
     void reportsUnsupportedHullConfig();
     void reportsPrimaryStructureSize();
@@ -329,6 +330,36 @@ void TstFleet::keepsBackupBeforeOverwrite()
     QFile file(backup);
     QVERIFY(file.open(QIODevice::ReadOnly));
     QCOMPARE(file.readAll(), firstContent);
+}
+
+void TstFleet::savesEvenWhenTheBackupIsBlocked()
+{
+    FleetDocument document;
+    QVERIFY(document.load(bulkSample(), nullptr, nullptr));
+
+    const QString out = QDir(m_root).filePath(QStringLiteral("blocked-backup.fleet"));
+    QString error;
+    QString notice;
+    QVERIFY2(document.save(out, &error, &notice), qPrintable(error));
+    QVERIFY(notice.isEmpty());
+
+    // Nothing can be written to that path, so the backup is skipped instead of
+    // costing the user the save.
+    const QString backup = out + QStringLiteral(".bak");
+    QVERIFY(QDir(m_root).mkdir(QStringLiteral("blocked-backup.fleet.bak")));
+
+    RandomHullConfig config = *document.hullConfig(1);
+    config.hullTint = QColor::fromRgbF(0.2f, 0.5f, 0.3f, 1.0f);
+    QVERIFY(document.setHullConfig(1, config));
+    QVERIFY2(document.save(out, &error, &notice), qPrintable(error));
+    QVERIFY(!notice.isEmpty());
+    QVERIFY(QFileInfo(backup).isDir());
+
+    FleetDocument reloaded;
+    QVERIFY2(reloaded.load(out, nullptr, &error), qPrintable(error));
+    const auto reloadedConfig = reloaded.hullConfig(1);
+    QVERIFY(reloadedConfig.has_value());
+    QVERIFY(*reloadedConfig == config);
 }
 
 void TstFleet::reportsMissingHullConfig()

@@ -22,7 +22,9 @@ public:
     ~FleetDocument();
 
     bool load(const QString &path, QVector<Diagnostic> *diagnostics, QString *error);
-    bool save(const QString &path, QString *error);
+    // A failed .bak is not a failed save: `notice` carries the reason the copy was
+    // skipped, so the caller can say so without treating the save as lost.
+    bool save(const QString &path, QString *error, QString *notice = nullptr);
 
     bool isDirty() const;
     QString filePath() const;
