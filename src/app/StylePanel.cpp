@@ -83,15 +83,6 @@ void StylePanel::setStyle(const RenderStyle &style)
     updateLabels();
 }
 
-void StylePanel::setHullTint(const QColor &tint)
-{
-    m_style.hullTint = tint;
-    m_tintSlider->blockSignals(true);
-    m_tintSlider->setValue(int(qRound(tint.lightnessF() * 100.0f)));
-    m_tintSlider->blockSignals(false);
-    updateLabels();
-}
-
 void StylePanel::pickColor(bool trim)
 {
     const QColor current = trim ? m_style.trimColor : m_style.baseColor;

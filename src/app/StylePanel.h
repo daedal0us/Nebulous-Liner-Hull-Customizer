@@ -21,8 +21,6 @@ public:
     void setStyle(const RenderStyle &style);
     const RenderStyle &style() const { return m_style; }
 
-    void setHullTint(const QColor &tint);
-
 signals:
     void styleChanged(const nlhc::RenderStyle &style);
 

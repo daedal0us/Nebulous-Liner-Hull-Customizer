@@ -19,6 +19,7 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QRandomGenerator>
+#include <optional>
 #include <QScrollArea>
 #include <QScrollArea>
 #include <QSettings>
@@ -159,19 +160,24 @@ void MainWindow::buildUi()
     m_stylePanel->setStyle(style);
     m_viewport->setStyle(style);
     connect(m_stylePanel, &StylePanel::styleChanged, this, [this](const RenderStyle &newStyle) {
-        m_viewport->setStyle(newStyle);
+        // The panel owns the preview colours only; the paint offset belongs to
+        // the selected ship, so re-apply it here - otherwise a slider move sends
+        // an offset of zero and the paint pattern jumps on screen.
+        const int row = currentShipRow();
+        const auto config = row >= 0 ? m_document.hullConfig(row) : std::nullopt;
+        RenderStyle style = newStyle;
+        if (config)
+            style.paintOffset = config->textureVariation;
+        m_viewport->setStyle(style);
         QSettings settings;
         settings.setValue(QStringLiteral("style/baseColor"), newStyle.baseColor.name());
         settings.setValue(QStringLiteral("style/trimColor"), newStyle.trimColor.name());
         // Base and trim are preview-only, but the hull tint is a fleet field.
-        const int row = currentShipRow();
-        if (row < 0)
-            return;
-        auto config = m_document.hullConfig(row);
         if (!config || config->hullTint == newStyle.hullTint)
             return;
-        config->hullTint = newStyle.hullTint;
-        if (m_document.setHullConfig(row, *config))
+        RandomHullConfig updated = *config;
+        updated.hullTint = newStyle.hullTint;
+        if (m_document.setHullConfig(row, updated))
             updateWindowTitle();
     });
     rightLayout->addWidget(m_editor, 1);
@@ -733,10 +739,13 @@ void MainWindow::refreshEditor()
     if (config) {
         RenderStyle style = m_viewport->style();
         style.paintOffset = config->textureVariation;
+        style.hullTint = config->hullTint;
         m_viewport->setStyle(style);
+        // The panel emits a complete RenderStyle on every edit, so it has to
+        // carry the per-ship paint offset as well: without this, moving the tint
+        // slider sent an offset of zero and the paint pattern jumped.
+        m_stylePanel->setStyle(style);
     }
-    if (config)
-        m_stylePanel->setHullTint(config->hullTint);
     if (!ship.editable)
         statusBar()->showMessage(readOnlyReasonText(ship, m_package), 8000);
     else if (!m_packageError.isEmpty())
