@@ -62,7 +62,6 @@ struct MaterialDef
     float albedoMix = 0.0f;
     QString maskPath;
     QString maskChannel = QStringLiteral("r");
-    bool maskInvert = false;
     bool trimBaked = false;
     QString normalPath;
     float normalStrength = 1.0f;
@@ -73,11 +72,6 @@ struct MaterialDef
     // fixed prop read as metal instead of flat plastics.
     float metallic = 0.0f;
     float smoothness = 0.5f;
-    // trim: the mask is white where the Base paint applies, so the trim weight is (1 - mask).
-    // keep: mask=0 keeps the authored albedo (brass trusses, grey deck plates) and mask=1 is painted.
-    QString maskMode = QStringLiteral("trim");
-    // Coverage of the louvred vent panels, which stay bare metal instead of taking paint.
-    QString bareMaskPath;
 };
 
 struct HullTypeDef

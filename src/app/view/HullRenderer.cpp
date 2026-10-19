@@ -69,8 +69,6 @@ uniform float uAlbedoMix;
 uniform bool uHasMask;
 uniform sampler2D uMask;
 uniform int uMaskChannel;
-uniform bool uMaskInvert;
-uniform bool uUseVertexTrim;
 
 uniform bool uHasNormalMap;
 uniform sampler2D uNormalMap;
@@ -82,48 +80,58 @@ uniform bool uDecalUseAlpha;
 
 uniform float uMetallic;
 uniform float uSmoothness;
-uniform float uMaskKeep;
+uniform vec3 uPaintOffset;      // per-ship texture variation, the shader's cb2[8]
+uniform float uPaintThreshold;  // voronoi edge band half width, the shader's cb2[9]
 
-uniform bool uCamoPaint;
-uniform vec3 uCamoOffset;
-uniform float uCamoScale;
-uniform float uCamoSplit;
-
-vec3 hash33(vec3 p)
+// Feature point of one voronoi cell, hashed the way the hull shader does it: a dot product
+// through sin, scrambled, then jittered by up to half a cell per axis.
+vec2 cellPoint(vec2 cell)
 {
-    p = vec3(dot(p, vec3(127.1, 311.7, 74.7)),
-             dot(p, vec3(269.5, 183.3, 246.1)),
-             dot(p, vec3(113.5, 271.9, 124.6)));
-    return fract(sin(p) * 43758.5453123);
+    vec2 angle = vec2(sin(dot(cell, vec2(15.27, 99.41))),
+                      sin(dot(cell, vec2(47.63, 89.98))));
+    vec2 jitter = fract(angle * 46839.32) * 4.1;
+    return cell + 0.5 * vec2(sin(jitter.x), cos(jitter.y));
 }
 
-// Value of the cellular field at p. The game paints a per-ship camouflage field, which is
-// why the boundary between the two paint colours wanders across panels instead of following
-// the stripe mask.
-float camoCell(vec3 p)
+// Distance to the nearest voronoi border in cell units. The hull shader thresholds this
+// distance to choose between the two paint colours, so the boundary is a wandering band
+// that crosses panel seams instead of a per-cell fill or a per-material mask.
+float voronoiEdge(vec2 p)
 {
-    vec3 base = floor(p);
-    vec3 here = fract(p);
+    vec2 base = floor(p);
+    vec2 here = fract(p);
+    vec2 nearest = vec2(0.0);
     float best = 1e9;
-    vec3 pick = base;
-    for (int z = -1; z <= 1; ++z) {
-        for (int y = -1; y <= 1; ++y) {
-            for (int x = -1; x <= 1; ++x) {
-                vec3 cell = vec3(float(x), float(y), float(z));
-                float d = length(cell + hash33(base + cell) - here);
-                if (d < best) {
-                    best = d;
-                    pick = base + cell;
-                }
+    for (int j = -1; j <= 1; ++j) {
+        for (int i = -1; i <= 1; ++i) {
+            vec2 cell = vec2(float(i), float(j));
+            vec2 offset = cellPoint(base + cell) - base - here;
+            float d = dot(offset, offset);
+            if (d < best) {
+                best = d;
+                nearest = cell;
             }
         }
     }
-    return hash33(pick).x;
+    vec2 own = cellPoint(base + nearest) - base;
+    float edge = 1e9;
+    for (int j = -2; j <= 1; ++j) {
+        for (int i = -2; i <= 1; ++i) {
+            if (i == 0 && j == 0)
+                continue;
+            vec2 other = cellPoint(base + nearest + vec2(float(i), float(j))) - base;
+            vec2 direction = own - other;
+            float len = length(direction);
+            if (len < 1e-4)
+                continue;
+            // Distance to the bisector with that neighbour: the nearest one is the cell border.
+            edge = min(edge, abs(dot(other + 0.5 * direction - here, direction / len)));
+        }
+    }
+    return edge;
 }
 
 uniform float uAlbedoMean;      // luminance average of the albedo, used to keep paint brightness
-uniform bool uHasBare;          // louvred vent panels painted by the exporter
-uniform sampler2D uBare;
 uniform float uAlbedoDetail;    // how strongly the albedo modulates the paint (0..1)
 uniform float uDecalStrength;   // white markings baked into the albedo
 uniform float uExposure;
@@ -144,7 +152,7 @@ float maskValue()
     if (uMaskChannel == 1) value = texel.g;
     else if (uMaskChannel == 2) value = texel.b;
     else if (uMaskChannel == 3) value = texel.a;
-    return uMaskInvert ? 1.0 - value : value;
+    return value;
 }
 
 void main()
@@ -184,11 +192,10 @@ void main()
     if (!gl_FrontFacing)
         normal = -normal;
 
-    float trim = 0.0;
-    if (uUseVertexTrim)
-        trim = clamp(vTrim, 0.0, 1.0);
-    else if (uHasMask)
-        trim = clamp(maskValue(), 0.0, 1.0);
+    // The paint mask is a coverage sheet: white where paint is applied, black on bare metal.
+    // A surface without one is painted all over, which is what the game does for segments that
+    // carry no authored _PaintMask.
+    float coverage = uHasMask ? clamp(maskValue(), 0.0, 1.0) : 1.0;
 
     vec3 albedoSample = vec3(1.0);
     if (uHasAlbedo)
@@ -212,38 +219,27 @@ void main()
 
     vec3 color;
     if (uPainted) {
-        // Livery surfaces: the paint colour decides the hue, the albedo only modulates it.
-        // Dividing by the texture mean keeps the paint at its authored brightness instead of
-        // darkening every surface by the average of the detail map.
-        vec3 painted;
-        if (uCamoPaint) {
-            float camo = step(uCamoSplit, camoCell(vWorld * uCamoScale + uCamoOffset));
-            painted = mix(uBaseColor.rgb, uTrimColor.rgb, camo);
-        } else {
-            painted = mix(uBaseColor.rgb, uTrimColor.rgb, trim);
-        }
-        // The hull atlas carries near-white panels (vent grilles, radiator stripes) that the game
-        // leaves unpainted. Their albedo is the colour, so blend it back over the paint.
-        float albedoLuma24 = dot(albedoSample, vec3(0.2990, 0.5870, 0.1140));
-        // Louvred vents stay bare metal in the game: the paint stops at the frame. Neither the
-        // mask nor the brightness can find them, so the exporter bakes their coverage.
-        float bare = (uMaskKeep > 0.5 || !uHasBare)
-            ? 0.0 : smoothstep(0.35, 0.70, texture(uBare, uvTex).r);
-        if (uMaskKeep > 0.5) {
-            // The mask only says where paint goes; the rest keeps its authored albedo, which is
-            // what makes a brass truss sit inside an otherwise painted bridge.
-            vec3 authored = uMaterialColor.rgb * albedoSample;
-            painted = mix(authored, uBaseColor.rgb, trim);
-        }
-        // The atlas seams are dark; left unbounded the detail map turns the trim bands brown.
+        // Two paint colours chosen by a voronoi border field in the ship's own frame; the game
+        // offsets that field by the per-ship texture variation, so no two hulls share a pattern
+        // and the boundary wanders across panel seams instead of following a mask.
+        vec2 plane = vec2(vWorld.y + uPaintOffset.y, vWorld.z + uPaintOffset.z);
+        float bandFirst = step(abs(1.0 - voronoiEdge(plane * vec2(0.408, 0.153)
+                                                     + vec2(2.56, 8.49))), uPaintThreshold);
+        float bandSecond = step(abs(1.0 - voronoiEdge(plane * vec2(0.102, 0.306))),
+                                uPaintThreshold);
+        float band = max(bandFirst, bandSecond);
+        // The paint multiplies the albedo exactly like the hull shader does, so panel seams and
+        // plate detail stay visible; dividing by the texture mean keeps the authored paint
+        // brightness instead of darkening every surface by the average of the detail map.
         vec3 detail = clamp(albedoSample / max(uAlbedoMean, 0.05), vec3(0.72), vec3(1.30));
-        color = painted * mix(vec3(1.0), detail, clamp(uAlbedoDetail, 0.0, 1.0));
-        // Bare panels are metals lit by an environment this viewer has no probe for, so the
-        // albedo is lifted toward the plate colour the game shows.
-        color = mix(color, mix(vec3(0.95), albedoSample, 0.70) * uExposure, bare);
+        vec3 painted = mix(uBaseColor.rgb, uTrimColor.rgb, band)
+            * mix(vec3(1.0), detail, clamp(uAlbedoDetail, 0.0, 1.0));
         if (uUseTint)
-            color *= uTintColor.rgb;
-        color *= uExposure;
+            painted *= uTintColor.rgb;
+        painted *= uExposure;
+        // Bare metal keeps its authored albedo: the mask decides where paint goes, so grilles,
+        // deck plating and brass fittings fall out of the same test.
+        color = mix(albedoSample * uExposure, painted, coverage);
     } else {
         // Fixed-colour props (copper doodads, grey deck plating, engine glow) keep their own
         // material colour: no livery tint and no exposure lift, or the copper turns pale. The
@@ -251,13 +247,6 @@ void main()
         vec3 base = uMaterialColor.rgb;
         float mixAmount = clamp(uAlbedoMix, 0.0, 1.0);
         color = mix(base, base * albedoSample, mixAmount);
-    }
-    // Near-white albedo pixels are only a weak fallback: without the authored decal they are
-    // the grime highlights, not markings, so they must not wash a surface out.
-    if (uHasAlbedo && uDecalStrength > 0.0) {
-        float luminance = dot(albedoSample, vec3(0.2990, 0.5870, 0.1140));
-        float highlight = smoothstep(0.80, 0.96, luminance);
-        color = mix(color, vec3(0.93), highlight * clamp(uDecalStrength, 0.0, 1.0) * 0.35);
     }
     // Authored nameplate decal (hull numbers, lettering) laid over paint and fixed surfaces.
     if (uHasDecal) {
@@ -553,7 +542,6 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         const bool painted = material ? material->paintable : true;
         program.setUniformValue("uPainted", painted);
         program.setUniformValue("uMaterialColor", material ? material->baseColor : QColor(Qt::gray));
-        program.setUniformValue("uUseVertexTrim", gpu->hasTrim);
 
         const QString albedoPath = material ? material->albedoPath : QString();
         const GLuint albedoId = texture(package, albedoPath);
@@ -569,14 +557,6 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         program.setUniformValue("uHasAlbedo", hasAlbedo);
         program.setUniformValue("uAlbedoMix", albedoMix);
         program.setUniformValue("uAlbedoMean", albedoMean(package, albedoPath));
-        const QString barePath = material ? material->bareMaskPath : QString();
-        const GLuint bareId = gpu->hasUv ? texture(package, barePath) : 0;
-        program.setUniformValue("uHasBare", bareId != 0);
-        program.setUniformValue("uBare", 4);
-        if (bareId != 0) {
-            glActiveTexture(GL_TEXTURE4);
-            glBindTexture(GL_TEXTURE_2D, bareId);
-        }
         program.setUniformValue("uAlbedoDetail", style.albedoDetail);
         program.setUniformValue("uDecalStrength", style.decalStrength);
         program.setUniformValue("uExposure", style.exposure);
@@ -586,11 +566,10 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         }
 
         const QString maskPath = material ? material->maskPath : QString();
-        const GLuint maskId = (!gpu->hasTrim) ? texture(package, maskPath) : 0;
+        const GLuint maskId = texture(package, maskPath);
         const bool hasMask = maskId != 0 && gpu->hasUv;
         program.setUniformValue("uHasMask", hasMask);
         program.setUniformValue("uMaskChannel", material ? channelIndex(material->maskChannel) : 0);
-        program.setUniformValue("uMaskInvert", material ? material->maskInvert : false);
         if (hasMask) {
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, maskId);
@@ -613,13 +592,9 @@ void HullRenderer::drawItems(const AssemblyResult &assembly, const HullPackage *
         program.setUniformValue("uDecalUseAlpha",
                                 material && material->decalMode == QLatin1String("alpha"));
         program.setUniformValue("uDecal", 3);
-        program.setUniformValue("uMaskKeep",
-                                material && material->maskMode == QLatin1String("keep") ? 1.0f : 0.0f);
-        program.setUniformValue("uCamoPaint", style.camoPaint);
-    program.setUniformValue("uCamoOffset", style.camoOffset);
-    program.setUniformValue("uCamoScale", style.camoScale);
-    program.setUniformValue("uCamoSplit", style.camoSplit);
-    program.setUniformValue("uMetallic", material ? material->metallic : 0.0f);
+        program.setUniformValue("uPaintOffset", style.paintOffset);
+        program.setUniformValue("uPaintThreshold", style.paintThreshold);
+        program.setUniformValue("uMetallic", material ? material->metallic : 0.0f);
         program.setUniformValue("uSmoothness", material ? material->smoothness : 0.5f);
         if (hasDecal) {
             glActiveTexture(GL_TEXTURE3);

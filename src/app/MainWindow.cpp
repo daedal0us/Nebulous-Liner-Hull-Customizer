@@ -655,7 +655,7 @@ void MainWindow::refreshEditor()
     m_editor->setEditable(ship.editable);
     if (config) {
         RenderStyle style = m_viewport->style();
-        style.camoOffset = config->textureVariation;
+        style.paintOffset = config->textureVariation;
         m_viewport->setStyle(style);
     }
     if (config)

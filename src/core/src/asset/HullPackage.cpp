@@ -313,18 +313,10 @@ bool HullPackage::load(const QString &rootDir, QString *error)
         def.albedoMix = float(object.value(QLatin1String("albedoMix")).toDouble(0.0));
         def.maskPath = object.value(QLatin1String("mask")).toString();
         def.maskChannel = object.value(QLatin1String("maskChannel")).toString(QStringLiteral("r"));
-        def.maskInvert = object.value(QLatin1String("maskInvert")).toBool(false);
         def.normalPath = object.value(QLatin1String("normal")).toString();
         def.normalStrength = float(object.value(QLatin1String("normalStrength")).toDouble(1.0));
         def.decalPath = object.value(QLatin1String("decal")).toString();
         def.decalMode = object.value(QLatin1String("decalMode")).toString(QStringLiteral("luminance"));
-        def.maskMode = object.value(QLatin1String("maskMode")).toString(QStringLiteral("trim"));
-        if (def.maskMode != QLatin1String("trim") && def.maskMode != QLatin1String("keep")) {
-            d->warnings.append(QStringLiteral("%1: unknown maskMode %2, using trim")
-                                   .arg(context, quote(def.maskMode)));
-            def.maskMode = QStringLiteral("trim");
-        }
-        def.bareMaskPath = object.value(QLatin1String("bareMask")).toString();
         def.metallic = float(object.value(QLatin1String("metallic")).toDouble(0.0));
         def.smoothness = float(object.value(QLatin1String("smoothness")).toDouble(0.5));
         def.trimBaked = object.value(QLatin1String("trimBaked")).toBool(false);

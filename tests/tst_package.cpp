@@ -110,10 +110,7 @@ void TstPackage::resolvesLookups()
     QVERIFY(material);
     QCOMPARE(material->albedoPath, QStringLiteral("albedo/paint.png"));
     QCOMPARE(material->maskChannel, QStringLiteral("r"));
-    QCOMPARE(material->bareMaskPath, QStringLiteral("bare/paint.png"));
     QVERIFY(material->paintable);
-    // A material without the key must stay on "never bare" instead of defaulting to 0.
-    QVERIFY(package.material(QStringLiteral("t:fixed"))->bareMaskPath.isEmpty());
     QVERIFY(package.material(QStringLiteral("t:nope")) == nullptr);
 }
 

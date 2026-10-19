@@ -386,15 +386,6 @@ def _interleave(red, green, blue):
     return values
 
 
-#: Bare-metal vent plates, keyed by exported albedo page and given in pixels of the 1024 px
-#: sheet. The louvred vents carry no distinguishing mask value, brightness or local contrast
-#: (all measured), so each one is read off the sheet and kept here by hand; the rects are
-#: confirmed visible on the model with --debug-view uv before being added.
-BARE_PANELS = {
-    "0005": [(648, 772, 734, 858)],
-    "0007": [(843, 72, 925, 152)],
-}
-
 def _interleave_rgba(red, green, blue, alpha):
     """Pack four channels into one RGBA payload."""
     values = bytearray(len(red) * 4)
@@ -555,9 +546,6 @@ class MaterialBuilder(object):
             # specular lobe a fixed prop renders like flat plastic.
             "metallic": 0.0,
             "smoothness": 0.5,
-            # trim: mask=0 takes the Trim colour (hull stripes). keep: mask=0 keeps the authored
-            # albedo (brass props, grey deck plates) and only mask=1 is painted.
-            "maskMode": "trim",
         }
         self.by_path[path_id] = definition
         self.names[definition["id"]] = name
@@ -581,31 +569,24 @@ class MaterialBuilder(object):
         mask, mask_origin = sources["mask"]
         if mask:
             self._build_mask(definition, mask, mask_origin)
-            self._build_bare(definition, definition["id"].split(":")[1],
-                             self.sizes["mask"])
         elif definition["paintable"]:
-            # No authored stripe mask: an all black mask keeps the renderer on
-            # the base paint everywhere instead of falling back to the trim tint.
+            # No authored paint mask: an all white placeholder paints the whole surface, so a
+            # missing mask reads as "painted all over" instead of "bare metal everywhere".
             relative = "mask/%s.png" % definition["id"].split(":")[1]
             textures.write_png(os.path.join(self.out_dir, relative), 4, 4, 1,
-                               bytearray(16))
+                               bytearray([255] * 16))
             definition["mask"] = relative
             self.mask_sources[definition["id"]] = "placeholder"
             self.log("    mask %s <- 4x4 placeholder (%r has no mask)"
                      % (definition["id"], name))
 
-        # The doodad/stencil sheets are plate atlases (white panels, hazard plates, warning
-        # text), not livery surfaces. The game shows them as authored metal; taking them as
-        # livery sprays those stencil colours across the whole tower.
+        # The doodad/stencil sheets are shared plate atlases (white panels, hazard plates,
+        # warning text), not livery surfaces: the game shows them as authored metal, and a
+        # hull livery sprayed over them turns the tower into hazard stripes.
         if definition.get("albedo") in ("albedo/0004.png", "albedo/0018.png"):
             definition["paintable"] = False
             definition["materialRole"] = "fixed"
-            self.log("    role %s -> fixed (plate/stencil atlas)"
-                     % definition["id"])
-
-        if albedo and mask:
-            definition["maskMode"] = self._mask_mode(albedo, sources["albedo"][0], mask)
-            definition["maskInvert"] = definition["maskMode"] != "keep"
+            self.log("    role %s -> fixed (plate/stencil atlas)" % definition["id"])
 
 
         normal, normal_origin = sources["normal"]
@@ -753,21 +734,6 @@ class MaterialBuilder(object):
         self.png_cache[key] = relative
         return relative
 
-    def _build_bare(self, definition, page, size):
-        # Rasterises BARE_PANELS for one sheet; no map is written when the page has none.
-        rects = BARE_PANELS.get(page)
-        if not rects:
-            return
-        values = bytearray(size * size)
-        unit = size / 1024.0
-        for x0, y0, x1, y1 in rects:
-            for y in range(int(y0 * unit), min(int(y1 * unit), size)):
-                row = y * size
-                for x in range(int(x0 * unit), min(int(x1 * unit), size)):
-                    values[row + x] = 255
-        definition["bareMask"] = self._write("bare", definition, page, size, size, 1, values)
-        self.log("    bare %s <- %d vent rects" % (definition["id"], len(rects)))
-
     def _build_mask(self, definition, source, origin):
         try:
             name, width, height, channels, _fmt = self._sample("mask", source)
@@ -788,72 +754,17 @@ class MaterialBuilder(object):
                    else textures.choose_mask_channel(stats))
         values = {"r": red, "g": green, "b": blue, "a": alpha}[channel]
         definition["maskChannel"] = channel
-        # The authored _PaintMask is WHITE where the base paint applies and BLACK
-        # on the stripe/trim regions (flat plating versus seams, hatch rims,
-        # grilles and vents). The in-game nameplate baker renders plates black
-        # into this texture, i.e. it gives the plate the contrasting stripe tint
-        # so the albedo lettering stays readable.  Renderers must therefore use
-        # (1 - mask) as the trim weight; maskInvert says exactly that.
-        # keep-mode materials paint only where the mask is white, so the raw value is wanted.
-        definition["maskInvert"] = definition["maskMode"] != "keep"
+        # The authored _PaintMask is a coverage sheet: white where paint is applied, black
+        # on bare metal. The hull shader mixes the painted tone over the authored albedo by
+        # exactly this value, so the export keeps the raw grey and no polarity flag exists.
         self.mask_sources[definition["id"]] = "%s:%s:%s" % (origin, channel, name)
         dark = sum(1 for value in values if value < 128) / float(len(values))
         self.log("    mask %s <- %-34s channel %s, dark %.0f%% (%s)"
                  % (definition["id"], name, channel, dark * 100.0, origin))
         values, width, height = textures.downsample(values, width, height,
                                                    self.sizes["mask"])
-        # A resampled mask has a band of intermediate values on every edge; mixing Base and
-        # Trim by half produces brown, which is what made the paint look dirty. The authored
-        # mask is binary, so the export keeps it binary and lets the sampler do the only
-        # blend (one texel wide).
-        values = bytearray(255 if value >= 128 else 0 for value in values)
         definition["mask"] = self._write("mask", definition, source, width, height,
                                          1, values)
-
-    def _mask_mode(self, albedo_source, mask_source_key, mask_source):
-        """"keep" when the mask's zero side keeps a distinctly coloured authored albedo."""
-        try:
-            _n, _w, _h, channels, _f = self._sample("albedo", albedo_source)
-            _m, _mw, _mh, mask_channels, _mf = self._sample("mask", mask_source)
-        except Exception:
-            return "trim"
-        red, green, blue, _alpha = channels
-        values = mask_channels[0]
-        low = high = 0
-        low_sat = high_sat = 0.0
-        for index in range(0, len(values), 7):
-            mask_index = index if index < len(values) else None
-            if mask_index is None:
-                continue
-            pixel = index if index < len(red) else None
-            if pixel is None:
-                continue
-            r, g, b = red[pixel], green[pixel], blue[pixel]
-            top = max(r, g, b)
-            sat = 0.0 if top == 0 else (top - min(r, g, b)) / float(top)
-            if values[index] < 32:
-                low += 1
-                low_sat += sat
-            elif values[index] > 223:
-                high += 1
-                high_sat += sat
-        if not low or not high:
-            return "trim"
-        if (low_sat / low) > (high_sat / high) + 0.08:
-            return "keep"
-        # The Moorline sheets are authored the other way round: on them the dark side is the
-        # deck plating, which the game leaves at its authored grey, and it covers the majority
-        # of the sheet (49.7-60.7% against 23.7-38.8% on the marauder skins, measured over all
-        # 33 masks). A minority dark side is a trim band, a majority dark side is plating.
-        if low / float(low + high) >= 0.45:
-            return "keep"
-        # The doodads atlas carries painted-in metal on the unpainted side; the scatter test above
-        # is noisy on it, so the family name decides.
-        try:
-            mask_name = self._sample("mask", mask_source)[0] or ""
-        except Exception:
-            mask_name = ""
-        return "keep" if "doodads" in mask_name.lower() else "trim"
 
     def _build_mask_map(self, definition, source):
         """HDRP _MaskMap: R = metallic, G = occlusion, A = smoothness.
@@ -1171,12 +1082,12 @@ def extract(bundle_path, out_dir, sizes=None, log=None, max_bytes=None,
     log = log or Logger()
     sizes = dict(DEFAULT_SIZES, **(sizes or {}))
     started = time.time()
-    folders = ("mesh", "mask", "albedo", "normal", "decal", "bare")
+    folders = ("mesh", "mask", "albedo", "normal", "decal")
     for sub in folders:
         os.makedirs(os.path.join(out_dir, sub), exist_ok=True)
     for sub, suffix in (("mesh", ".nlmesh"), ("mask", ".png"),
                         ("albedo", ".png"), ("normal", ".png"),
-                        ("decal", ".png"), ("bare", ".png")):
+                        ("decal", ".png")):
         folder = os.path.join(out_dir, sub)
         for name in os.listdir(folder):
             if name.endswith(suffix):

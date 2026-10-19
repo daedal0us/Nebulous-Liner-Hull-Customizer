@@ -473,6 +473,7 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
     placeholders = set()
     unreadable = []
     dark_ratios = []
+    grey_shares = []
     decal_pixels = {}
     for material in materials:
         for kind in ("albedo", "mask", "normal", "decal"):
@@ -501,6 +502,9 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                 luminance = pixels[::channels]
                 dark = sum(1 for value in luminance if value < 128) / float(len(luminance))
                 dark_ratios.append((material["id"], dark))
+                grey = sum(1 for value in luminance if 0 < value < 255) \
+                    / float(len(luminance))
+                grey_shares.append((material["id"], grey))
 
     hull_materials = []
     unresolved = []
@@ -544,40 +548,25 @@ def verify(catalog, out_dir, stats, max_bytes=None, samples="samples",
                                      "; out of range " + str(bad_dark[:3])))
 
     placeholder_masks = {item[0] for item in placeholders if item[1] == "mask"}
-    polarity_bad = []
-    for material in materials:
-        if not material.get("mask"):
-            continue
-        if material.get("maskMode") == "keep":
-            continue  # keep-mode masks are white-where-painted, the opposite convention
-        if material["id"] in placeholder_masks:
-            if material["maskInvert"]:
-                polarity_bad.append(material["id"] + " placeholder inverted")
-        elif material["maskChannel"] != "r":
-            polarity_bad.append(material["id"] + " channel")
-        elif not material["maskInvert"]:
-            # A trim mask is authored white where the BASE paint applies, so the trim weight is
-            # (1 - mask). A sheet that skips the inversion floods the hull with the trim colour.
-            polarity_bad.append(material["id"] + " not inverted")
-    bare_bad = []
-    bare_ok = 0
-    for material in materials:
-        if not material.get("bareMask"):
-            continue
-        bare_ok += 1
-        owner = (names.get(material["id"]) or "").lower()
-        if "civbulk" not in owner and "marauder" not in owner:
-            bare_bad.append(material["id"])
-    report.check("bare panel maps only ship for the marauder plating",
-                 not bare_bad,
-                 "%d bare maps%s" % (bare_ok, "" if not bare_bad
-                                     else "; unexpected " + ", ".join(bare_bad[:3])))
+    channel_bad = [material["id"] for material in materials
+                   if material.get("mask")
+                   and material["id"] not in placeholder_masks
+                   and material["maskChannel"] != "r"]
+    report.check("every livery mask is the single luminance sheet (channel r)",
+                 not channel_bad,
+                 "%d masks, channel %s"
+                 % (len(materials), "ok" if not channel_bad
+                    else "; wrong channel " + ", ".join(channel_bad[:3])))
 
-    report.check("mask polarity follows the authoring convention per family",
-                 not polarity_bad,
-                 "%d masks, channel/polarity %s"
-                 % (len(materials), "ok" if not polarity_bad
-                    else "; ".join(polarity_bad[:3])))
+    flat_masks = [item for item in grey_shares if item[1] < 0.005]
+    report.check("masks keep the authored grey instead of being binarised",
+                 bool(grey_shares) and not flat_masks,
+                 "%d masks, grey share %.3f-%.3f%s"
+                 % (len(grey_shares),
+                    min(item[1] for item in grey_shares) if grey_shares else 0.0,
+                    max(item[1] for item in grey_shares) if grey_shares else 0.0,
+                    "" if not flat_masks
+                    else "; flat " + ", ".join(item[0] for item in flat_masks[:3])))
 
     hull_with_normal = [material for material in hull_materials
                         if material.get("normal")]
