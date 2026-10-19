@@ -74,6 +74,7 @@ private slots:
     void changesOnlyTheRequestedValue();
     void keepsBackupBeforeOverwrite();
     void savesEvenWhenTheBackupIsBlocked();
+    void writesAPreparedPayload();
     void reportsMissingHullConfig();
     void reportsUnsupportedHullConfig();
     void reportsPrimaryStructureSize();
@@ -360,6 +361,32 @@ void TstFleet::savesEvenWhenTheBackupIsBlocked()
     const auto reloadedConfig = reloaded.hullConfig(1);
     QVERIFY(reloadedConfig.has_value());
     QVERIFY(*reloadedConfig == config);
+}
+
+void TstFleet::writesAPreparedPayload()
+{
+    FleetDocument document;
+    QVERIFY(document.load(bulkSample(), nullptr, nullptr));
+
+    const QByteArray payload = document.serialized();
+    QVERIFY(!payload.isEmpty());
+
+    const QString out = QDir(m_root).filePath(QStringLiteral("prepared.fleet"));
+    QString error;
+    QString notice;
+    QVERIFY2(writeFleetFile(out, payload, &error, &notice), qPrintable(error));
+    QVERIFY(notice.isEmpty());
+    QFile written(out);
+    QVERIFY(written.open(QIODevice::ReadOnly));
+    QCOMPARE(written.readAll(), payload);
+
+    RandomHullConfig config = *document.hullConfig(0);
+    config.hullTint = QColor::fromRgbF(0.3f, 0.6f, 0.9f, 1.0f);
+    QVERIFY(document.setHullConfig(0, config));
+    QVERIFY(document.isDirty());
+    document.markSaved(out);
+    QVERIFY(!document.isDirty());
+    QCOMPARE(document.filePath(), out);
 }
 
 void TstFleet::reportsMissingHullConfig()

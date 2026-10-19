@@ -295,7 +295,7 @@ bool FleetDocument::load(const QString &path, QVector<Diagnostic> *diagnostics, 
     return true;
 }
 
-bool FleetDocument::save(const QString &path, QString *error, QString *notice)
+bool writeFleetFile(const QString &path, const QByteArray &payload, QString *error, QString *notice)
 {
     const auto fail = [error](const QString &message) {
         if (error)
@@ -305,33 +305,55 @@ bool FleetDocument::save(const QString &path, QString *error, QString *notice)
 
     if (notice)
         notice->clear();
-
-    if (!d->loaded)
-        return fail(QStringLiteral("no document loaded"));
-    const QString target = path.isEmpty() ? d->path : path;
-    if (target.isEmpty())
+    if (path.isEmpty())
         return fail(QStringLiteral("no target path"));
 
-    if (QFileInfo::exists(target)) {
+    if (QFileInfo::exists(path)) {
         QString reason;
-        if (!copyForBackup(target, target + QStringLiteral(".bak"), &reason) && notice)
+        if (!copyForBackup(path, path + QStringLiteral(".bak"), &reason) && notice)
             *notice = reason;
     }
 
-    const QByteArray payload = d->document.toByteArray(2);
-    QSaveFile file(target);
+    QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly))
-        return fail(QStringLiteral("cannot write %1: %2").arg(target, file.errorString()));
+        return fail(QStringLiteral("cannot write %1: %2").arg(path, file.errorString()));
     if (file.write(payload) != payload.size()) {
         file.cancelWriting();
-        return fail(QStringLiteral("cannot write %1: %2").arg(target, file.errorString()));
+        return fail(QStringLiteral("cannot write %1: %2").arg(path, file.errorString()));
     }
     if (!file.commit())
-        return fail(QStringLiteral("cannot replace %1: %2").arg(target, file.errorString()));
-
-    d->path = target;
-    d->dirty = false;
+        return fail(QStringLiteral("cannot replace %1: %2").arg(path, file.errorString()));
     return true;
+}
+
+bool FleetDocument::save(const QString &path, QString *error, QString *notice)
+{
+    if (!d->loaded) {
+        if (error)
+            *error = QStringLiteral("no document loaded");
+        return false;
+    }
+    const QString target = path.isEmpty() ? d->path : path;
+    if (target.isEmpty()) {
+        if (error)
+            *error = QStringLiteral("no target path");
+        return false;
+    }
+    if (!writeFleetFile(target, serialized(), error, notice))
+        return false;
+    markSaved(target);
+    return true;
+}
+
+QByteArray FleetDocument::serialized() const
+{
+    return d->document.toByteArray(2);
+}
+
+void FleetDocument::markSaved(const QString &path)
+{
+    d->path = path;
+    d->dirty = false;
 }
 
 bool FleetDocument::isDirty() const
