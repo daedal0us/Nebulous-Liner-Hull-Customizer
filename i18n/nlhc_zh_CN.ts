@@ -321,6 +321,22 @@
         <translation>已保存 %1</translation>
     </message>
     <message>
+        <source>Saved %1, but no backup was kept: %2</source>
+        <translation>已保存 %1，但未能保留备份：%2</translation>
+    </message>
+    <message>
+        <source>The fleet could not be written.</source>
+        <translation>舰队文件无法写入。</translation>
+    </message>
+    <message>
+        <source>The folder may be read-only, or security software (antivirus, HIPS) may be blocking this program from writing to it. Save to another folder, or allow this program in that security software.</source>
+        <translation>原因可能是该文件夹为只读，或安全软件（杀毒软件、HIPS）阻止本程序写入。请另存到其他文件夹，或在安全软件中放行本程序。</translation>
+    </message>
+    <message>
+        <source>Save as…</source>
+        <translation>另存为…</translation>
+    </message>
+    <message>
         <location filename="../src/app/MainWindow.cpp" line="419"/>
         <source>Save fleet as</source>
         <translation>舰队另存为</translation>

@@ -60,6 +60,8 @@ private:
     bool openFile(const QString &path);
     bool saveFile();
     bool saveFileAs();
+    void reportSaved(const QString &path, const QString &backupProblem);
+    bool reportSaveFailure(const QString &error);
     void exportImage();
     void showAbout();
 

@@ -19,9 +19,9 @@
 #include <QListWidget>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QRandomGenerator>
 #include <optional>
-#include <QScrollArea>
 #include <QScrollArea>
 #include <QSettings>
 #include <QShowEvent>
@@ -47,6 +47,11 @@
 
 namespace nlhc {
 namespace {
+
+// Qt's own file dialog rather than the Windows one: the native dialog hosts an
+// Explorer view inside this process, and an exception thrown by any shell
+// extension in its paste path terminates the whole application (0xc000041d).
+const QFileDialog::Options kFileDialogOptions = QFileDialog::DontUseNativeDialog;
 
 QString assetProbePath()
 {
@@ -478,7 +483,8 @@ void MainWindow::openFileDialog()
     if (start.isEmpty() && !m_document.filePath().isEmpty())
         start = QFileInfo(m_document.filePath()).absolutePath();
     const QString path = QFileDialog::getOpenFileName(this, tr("Open fleet"), start,
-                                                      tr("Fleet files (*.fleet);;All files (*)"));
+                                                      tr("Fleet files (*.fleet);;All files (*)"), nullptr,
+                                                      kFileDialogOptions);
     if (path.isEmpty())
         return;
     openFile(path);
@@ -508,13 +514,16 @@ bool MainWindow::saveFile()
 {
     if (m_document.filePath().isEmpty())
         return saveFileAs();
+    const QString path = m_document.filePath();
     QString error;
-    if (!m_document.save(m_document.filePath(), &error)) {
-        QMessageBox::critical(this, tr("Save failed"), error);
-        return false;
+    QString notice;
+    if (!m_document.save(path, &error, &notice)) {
+        if (!reportSaveFailure(error))
+            return false;
+        return saveFileAs();
     }
     updateWindowTitle();
-    statusBar()->showMessage(tr("Saved %1").arg(m_document.filePath()), 4000);
+    reportSaved(path, notice);
     return true;
 }
 
@@ -531,24 +540,58 @@ bool MainWindow::saveFileAs()
     } else if (!m_document.filePath().isEmpty()) {
         start = m_document.filePath();
     }
-    const QString path = QFileDialog::getSaveFileName(this, tr("Save fleet as"), start,
-                                                      tr("Fleet files (*.fleet)"));
-    if (path.isEmpty())
-        return false;
-    QString error;
-    if (!m_document.save(path, &error)) {
-        QMessageBox::critical(this, tr("Save failed"), error);
-        return false;
+
+    for (;;) {
+        const QString path = QFileDialog::getSaveFileName(this, tr("Save fleet as"), start,
+                                                          tr("Fleet files (*.fleet)"), nullptr,
+                                                          kFileDialogOptions);
+        if (path.isEmpty())
+            return false;
+        QString error;
+        QString notice;
+        if (!m_document.save(path, &error, &notice)) {
+            if (!reportSaveFailure(error))
+                return false;
+            start = path;
+            continue;
+        }
+        updateRecentFiles(path);
+        updateWindowTitle();
+        reportSaved(path, notice);
+        return true;
     }
-    updateRecentFiles(path);
-    updateWindowTitle();
-    return true;
+}
+
+void MainWindow::reportSaved(const QString &path, const QString &backupProblem)
+{
+    if (backupProblem.isEmpty()) {
+        statusBar()->showMessage(tr("Saved %1").arg(path), 4000);
+        return;
+    }
+    statusBar()->showMessage(tr("Saved %1, but no backup was kept: %2").arg(path, backupProblem), 8000);
+}
+
+bool MainWindow::reportSaveFailure(const QString &error)
+{
+    QMessageBox box(this);
+    box.setIcon(QMessageBox::Critical);
+    box.setWindowTitle(tr("Save failed"));
+    box.setText(tr("The fleet could not be written."));
+    box.setInformativeText(error + QStringLiteral("\n\n")
+                           + tr("The folder may be read-only, or security software (antivirus, "
+                                "HIPS) may be blocking this program from writing to it. Save to "
+                                "another folder, or allow this program in that security software."));
+    QPushButton *saveAsButton = box.addButton(tr("Save as…"), QMessageBox::AcceptRole);
+    QPushButton *cancelButton = box.addButton(QMessageBox::Cancel);
+    box.setEscapeButton(cancelButton);
+    box.exec();
+    return box.clickedButton() == saveAsButton;
 }
 
 void MainWindow::exportImage()
 {
     const QString path = QFileDialog::getSaveFileName(this, tr("Export view"), QStringLiteral("hull.png"),
-                                                      tr("PNG image (*.png)"));
+                                                      tr("PNG image (*.png)"), nullptr, kFileDialogOptions);
     if (path.isEmpty())
         return;
     const QImage image = m_viewport->grabImage();

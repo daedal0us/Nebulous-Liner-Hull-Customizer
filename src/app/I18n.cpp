@@ -55,9 +55,13 @@ void apply(QApplication *app, Language language)
             delete translator;
         }
 
+        // windeployqt ships one merged qt_<code>.qm catalog; a plain Qt install keeps
+        // the per-module files apart, so both names are worth a try.
+        const QString translationsDir = QLibraryInfo::path(QLibraryInfo::TranslationsPath);
         auto *qtTranslator = new QTranslator(app);
-        if (qtTranslator->load(QStringLiteral("qtbase_%1").arg(code),
-                               QLibraryInfo::path(QLibraryInfo::TranslationsPath))) {
+        const bool loaded = qtTranslator->load(QStringLiteral("qt_%1").arg(code), translationsDir)
+            || qtTranslator->load(QStringLiteral("qtbase_%1").arg(code), translationsDir);
+        if (loaded) {
             app->installTranslator(qtTranslator);
             g_qtTranslator = qtTranslator;
         } else {
