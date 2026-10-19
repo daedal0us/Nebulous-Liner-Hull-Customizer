@@ -362,6 +362,11 @@ void MainWindow::applyLanguage(i18n::Language language)
 
     const int row = currentShipRow();
     const bool diagnosticsVisible = m_diagnosticDock && !m_diagnosticDock->isHidden();
+    // The rebuild below replaces the splitter and the dock, and the defaults
+    // buildUi() installs are not the proportions this window is using, so carry
+    // the current geometry across or the layout jumps on every language change.
+    const QList<int> splitterSizes = m_splitter ? m_splitter->sizes() : QList<int>();
+    const int dockHeight = diagnosticsVisible ? m_diagnosticDock->height() : 0;
     m_handlingLanguageChange = true;
     delete takeCentralWidget();
     delete m_diagnosticDock;
@@ -376,6 +381,14 @@ void MainWindow::applyLanguage(i18n::Language language)
     buildMenus();
     if (diagnosticsVisible && m_diagnosticDock)
         m_diagnosticDock->show();
+    QTimer::singleShot(0, this, [this, splitterSizes, dockHeight] {
+        if (m_splitter && splitterSizes.size() == 3 && splitterSizes.at(1) > 0)
+            m_splitter->setSizes(splitterSizes);
+        else
+            applySplitterRatio();
+        if (dockHeight > 0 && m_diagnosticDock && !m_diagnosticDock->isHidden())
+            resizeDocks({m_diagnosticDock}, {dockHeight}, Qt::Vertical);
+    });
     retranslateMenus();
     updateRecentFiles();
     updateActionsEnabled();
