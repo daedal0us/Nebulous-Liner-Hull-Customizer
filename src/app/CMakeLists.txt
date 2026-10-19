@@ -52,13 +52,15 @@ if(WIN32)
     endif()
     set(NLHC_MANIFEST_VERSION "${PROJECT_VERSION}.0")
     set(NLHC_VERSION_COMMA "${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},0")
+    set(NLHC_ICON_FILE "${CMAKE_CURRENT_BINARY_DIR}/nlhc.ico")
     configure_file(nlhc.rc.in "${CMAKE_CURRENT_BINARY_DIR}/nlhc.rc" @ONLY)
     set(NLHC_RESOURCE_FILE "${CMAKE_CURRENT_BINARY_DIR}/nlhc_rc.obj")
     add_custom_command(
         OUTPUT "${NLHC_RESOURCE_FILE}"
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/nlhc.ico" "${NLHC_ICON_FILE}"
         COMMAND "${CMAKE_RC_COMPILER}" -i "${CMAKE_CURRENT_BINARY_DIR}/nlhc.rc" -o "${NLHC_RESOURCE_FILE}" -O coff
-        DEPENDS nlhc.rc.in "${CMAKE_CURRENT_BINARY_DIR}/nlhc.rc"
-        COMMENT "Compiling nlhc.rc (manifest + version info)"
+        DEPENDS nlhc.rc.in nlhc.ico "${CMAKE_CURRENT_BINARY_DIR}/nlhc.rc"
+        COMMENT "Compiling nlhc.rc (manifest + version info + icon)"
         VERBATIM
     )
     set_source_files_properties("${NLHC_RESOURCE_FILE}" PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)

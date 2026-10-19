@@ -4,6 +4,10 @@
 #pragma code_page(65001)
 #include <winver.h>
 
+// Application icon. The path is substituted by CMake and sits in the build
+// tree, because windres breaks on a source path that contains spaces.
+IDI_ICON1 ICON "@NLHC_ICON_FILE@"
+
 1 RT_MANIFEST
 BEGIN
     "<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>"
