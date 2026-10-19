@@ -39,9 +39,15 @@ foreach ($dir in @('bin', 'assets', 'samples')) {
     $from = Join-Path $src $dir
     if (Test-Path $from) { Copy-Item $from -Destination $staging -Recurse -Force }
 }
-foreach ($file in @('LICENSE', 'README.md')) {
-    $from = Join-Path $root $file
-    if (Test-Path $from) { Copy-Item $from -Destination $staging -Force }
+Copy-Item (Join-Path $root 'LICENSE') -Destination $staging -Force
+# The end-user readme and the public half of the signing certificate: without
+# the certificate Windows cannot tell who published the binaries.
+Copy-Item (Join-Path $root 'release/README.md') -Destination (Join-Path $staging 'README.md') -Force
+$certificate = Join-Path $root 'scripts/signing-cert.cer'
+if (Test-Path $certificate) {
+    Copy-Item $certificate -Destination (Join-Path $staging 'signing-cert.cer') -Force
+} else {
+    Write-Warning 'scripts/signing-cert.cer is missing; the package ships without it (run scripts/sign.ps1 -TrustCert)'
 }
 
 # A release that ships an unsigned binary gets a publisher warning on every
