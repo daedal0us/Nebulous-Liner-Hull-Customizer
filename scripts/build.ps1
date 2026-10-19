@@ -48,7 +48,13 @@ if ($Deploy) {
     # that the current asset export no longer produces. Rebuild it from scratch.
     if (Test-Path $distDir) {
         Write-Host "== clean ($distDir)" -ForegroundColor Cyan
-        Remove-Item $distDir -Recurse -Force
+        # A shell, an indexer or an antivirus scan can hold the folder itself;
+        # clearing its contents gets the same result in that case.
+        try {
+            Remove-Item $distDir -Recurse -Force -ErrorAction Stop
+        } catch {
+            Get-ChildItem $distDir -Force | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
     Write-Host "== install ($distDir)" -ForegroundColor Cyan
     & $cmake --install $buildDir --prefix $distDir

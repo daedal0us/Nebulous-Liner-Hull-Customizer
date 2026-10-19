@@ -39,6 +39,8 @@ foreach ($dir in @('bin', 'assets', 'samples')) {
     $from = Join-Path $src $dir
     if (Test-Path $from) { Copy-Item $from -Destination $staging -Recurse -Force }
 }
+# The package-root launcher lives next to bin/ in the install tree.
+Get-ChildItem $src -File -Filter *.exe | Copy-Item -Destination $staging -Force
 Copy-Item (Join-Path $root 'LICENSE') -Destination $staging -Force
 # The end-user readme and the public half of the signing certificate: without
 # the certificate Windows cannot tell who published the binaries.
@@ -83,7 +85,21 @@ if (-not $SkipVerify) {
 if (-not (Test-Path (Join-Path $root $Output))) {
     New-Item -ItemType Directory -Path (Join-Path $root $Output) -Force | Out-Null
 }
-if (Test-Path $zip) { Remove-Item $zip -Force }
+# Explorer, an indexer or an antivirus scan can hold the previous archive for a
+# moment after it is written.
+if (Test-Path $zip) {
+    $attempt = 0
+    while ($true) {
+        try {
+            Remove-Item $zip -Force -ErrorAction Stop
+            break
+        } catch {
+            $attempt++
+            if ($attempt -ge 5) { throw "cannot replace $zip - close it and try again" }
+            Start-Sleep -Milliseconds 700
+        }
+    }
+}
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory(
     $staging, $zip, [System.IO.Compression.CompressionLevel]::Optimal, $true)

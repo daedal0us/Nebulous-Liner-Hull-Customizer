@@ -1,9 +1,12 @@
 # Liner Hull Customizer 0.1.0
 
 Portable build of the hull editor for *Nebulous: Fleet Command* liner fleets.
-Extract this folder anywhere and run `bin\NLHC.exe` — no installer, no
-dependencies to install, and nothing is written outside this folder apart from
-the `.bak` file next to every fleet you save.
+Extract this folder anywhere and double-click **`Liner Hull Customizer.exe`** in
+it — no installer, no dependencies to install, and nothing is written outside
+this folder apart from the `.bak` file next to every fleet you save.
+
+That launcher simply starts `bin\NLHC.exe` from wherever you unpacked it, so the
+folder can be moved or renamed as often as you like.
 
 ## Requirements
 

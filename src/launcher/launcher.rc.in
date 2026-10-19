@@ -1,0 +1,35 @@
+#pragma code_page(65001)
+#include <winver.h>
+
+// Same artwork as the application; the path is substituted by CMake because
+// windres breaks on a source path that contains spaces.
+IDI_ICON1 ICON "@NLHC_ICON_FILE@"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION @NLHC_VERSION_COMMA@
+PRODUCTVERSION @NLHC_VERSION_COMMA@
+FILEFLAGSMASK 0x3fL
+FILEFLAGS 0x0L
+FILEOS 0x40004L
+FILETYPE 0x1L
+FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "Nebulous Liner Hull Customizer\0"
+            VALUE "FileDescription", "Liner Hull Customizer\0"
+            VALUE "FileVersion", "@PROJECT_VERSION@.0\0"
+            VALUE "InternalName", "LinerHullCustomizer\0"
+            VALUE "LegalCopyright", "Not affiliated with Nebulous: Fleet Command\0"
+            VALUE "OriginalFilename", "Liner Hull Customizer.exe\0"
+            VALUE "ProductName", "Liner Hull Customizer\0"
+            VALUE "ProductVersion", "@PROJECT_VERSION@.0\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

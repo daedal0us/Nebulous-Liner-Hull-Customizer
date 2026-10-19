@@ -34,6 +34,7 @@ endfunction()
 enable_testing()
 add_subdirectory(src/core)
 add_subdirectory(src/app)
+add_subdirectory(src/launcher)
 add_subdirectory(tests)
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/ DESTINATION assets)
