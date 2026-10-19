@@ -86,6 +86,7 @@ qt_add_executable(NLHC WIN32
 add_dependencies(NLHC nlhc_translations)
 target_compile_definitions(NLHC PRIVATE NLHC_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 target_link_libraries(NLHC PRIVATE NLHCRender)
+nlhc_sign_after_build(NLHC)
 install(TARGETS NLHC RUNTIME DESTINATION bin)
 
 # Qt's own deploy script generator emits unquoted absolute paths, which breaks for

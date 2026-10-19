@@ -21,7 +21,15 @@ $env:PATH = "$qtBin;$mingwBin;$ninjaDir;$cmakeBin;$env:PATH"
 $buildDir = Join-Path $root "build/$Preset"
 
 Write-Host "== configure ($Preset)" -ForegroundColor Cyan
-& $cmake --preset $Preset
+$configureArgs = @()
+if ($Sign) {
+    # Remember the certificate in the build cache so that a plain
+    # 'cmake --build' keeps re-signing every relinked binary, not just this run.
+    $cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert |
+        Sort-Object NotAfter -Descending | Select-Object -First 1
+    if ($cert) { $configureArgs += "-DNLHC_SIGN_CERT=$($cert.Thumbprint)" }
+}
+& $cmake --preset $Preset @configureArgs
 if ($LASTEXITCODE -ne 0) { throw 'configure failed' }
 
 Write-Host '== build' -ForegroundColor Cyan
