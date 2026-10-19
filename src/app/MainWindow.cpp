@@ -247,6 +247,28 @@ void MainWindow::buildMenus()
         }
     });
 
+    // The debug views are how a mismatch is told apart: flat colours name the material that owns
+    // a face, and the mask/albedo views show what the shader actually samples there.
+    m_viewMenu = menuBar()->addMenu(QString());
+    m_debugActions.clear();
+    const QList<QPair<QString, QString>> debugEntries = {
+        {QStringLiteral("off"), QString()},
+        {QStringLiteral("materials"), QString()},
+        {QStringLiteral("mask"), QString()},
+        {QStringLiteral("albedo"), QString()},
+        {QStringLiteral("uv"), QString()},
+    };
+    for (const auto &entry : debugEntries) {
+        QAction *action = m_viewMenu->addAction(QString());
+        action->setCheckable(true);
+        action->setData(entry.first);
+        connect(action, &QAction::triggered, this, [this, action] {
+            setDebugViewName(action->data().toString());
+        });
+        m_debugActions.append(action);
+    }
+    setDebugViewName(QStringLiteral("off"));
+
     m_languageMenu = menuBar()->addMenu(QString());
     m_helpMenu = menuBar()->addMenu(QString());
     m_aboutAction = m_helpMenu->addAction(QString());
@@ -287,6 +309,14 @@ void MainWindow::retranslateMenus()
     m_randomizeFleetAction->setText(tr("Randomize whole fleet"));
     m_copyAction->setText(tr("Copy hull to same ship type"));
     m_repairAction->setText(tr("Repair hull configuration"));
+    m_viewMenu->setTitle(tr("&View"));
+    if (m_debugActions.size() == 5) {
+        m_debugActions.at(0)->setText(tr("&Off"));
+        m_debugActions.at(1)->setText(tr("&Materials"));
+        m_debugActions.at(2)->setText(tr("&Mask"));
+        m_debugActions.at(3)->setText(tr("&Albedo"));
+        m_debugActions.at(4)->setText(tr("&UV"));
+    }
     m_languageMenu->setTitle(tr("&Language"));
     m_helpMenu->setTitle(tr("&Help"));
     m_aboutAction->setText(tr("&About NLHC"));
@@ -571,6 +601,15 @@ void MainWindow::setDebugViewName(const QString &name)
         view = HullRenderer::DebugView::Uv;
     if (m_viewport)
         m_viewport->setDebugView(view);
+    const QString current = view == HullRenderer::DebugView::Off ? QStringLiteral("off") : name;
+    for (QAction *action : m_debugActions)
+        action->setChecked(action->data().toString() == current);
+}
+
+void MainWindow::setOrbitAngles(float yawDegrees, float pitchDegrees)
+{
+    if (m_viewport)
+        m_viewport->setOrbitAngles(yawDegrees, pitchDegrees);
 }
 
 QString MainWindow::debugRenderLegend() const

@@ -35,6 +35,7 @@ public:
     void selectShipByIndex(int row);
     bool applyLanguageByName(const QString &name);
     void setDebugViewName(const QString &name);
+    void setOrbitAngles(float yawDegrees, float pitchDegrees);
     QString debugRenderLegend() const;
     QString debugLayoutSummary() const;
     QString debugAssemblySummary() const;
@@ -105,8 +106,10 @@ private:
     QAction *m_aboutAction = nullptr;
     QMenu *m_fileMenu = nullptr;
     QMenu *m_editMenu = nullptr;
+    QMenu *m_viewMenu = nullptr;
     QMenu *m_languageMenu = nullptr;
     QMenu *m_helpMenu = nullptr;
+    QList<QAction *> m_debugActions;
     QMenu *m_recentMenu = nullptr;
     QList<QAction *> m_languageActions;
     QSplitter *m_splitter = nullptr;

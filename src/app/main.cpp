@@ -65,6 +65,11 @@ int main(int argc, char *argv[])
     if (!language.isEmpty() && !window.applyLanguageByName(language))
         return 2;
 
+    const QString yaw = argumentValue(args, QStringLiteral("--yaw"));
+    const QString pitch = argumentValue(args, QStringLiteral("--pitch"));
+    if (!yaw.isEmpty() || !pitch.isEmpty())
+        window.setOrbitAngles(yaw.toFloat(), pitch.toFloat());
+
     const QString debugView = argumentValue(args, QStringLiteral("--debug-view"));
     if (!debugView.isEmpty())
         window.setDebugViewName(debugView);

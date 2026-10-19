@@ -29,6 +29,7 @@ public:
     void setStyle(const RenderStyle &style);
     const RenderStyle &style() const { return m_style; }
     void resetViews();
+    void setOrbitAngles(float yawDegrees, float pitchDegrees);
     QImage grabImage();
 
     void setDebugView(HullRenderer::DebugView view);

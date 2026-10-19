@@ -49,6 +49,12 @@ void OrbitCamera::orbit(float deltaYawDegrees, float deltaPitchDegrees)
     m_pitch = qBound(-89.0f, m_pitch + deltaPitchDegrees, 89.0f);
 }
 
+void OrbitCamera::setAngles(float yawDegrees, float pitchDegrees)
+{
+    m_yaw = yawDegrees;
+    m_pitch = qBound(-89.0f, pitchDegrees, 89.0f);
+}
+
 void OrbitCamera::zoom(float factor)
 {
     m_distance = qBound(1.0f, m_distance * factor, 10000.0f);

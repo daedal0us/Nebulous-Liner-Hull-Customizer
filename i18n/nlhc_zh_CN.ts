@@ -376,6 +376,36 @@
         <source>Applied hull to %1 ship(s).</source>
         <translation>已应用到 %1 艘舰船。</translation>
     </message>
+    <message>
+        <location filename="../src/app/MainWindow.cpp"/>
+        <source>&amp;View</source>
+        <translation>视图(&amp;V)</translation>
+    </message>
+    <message>
+        <location filename="../src/app/MainWindow.cpp"/>
+        <source>&amp;Off</source>
+        <translation>关闭(&amp;O)</translation>
+    </message>
+    <message>
+        <location filename="../src/app/MainWindow.cpp"/>
+        <source>&amp;Materials</source>
+        <translation>材质(&amp;M)</translation>
+    </message>
+    <message>
+        <location filename="../src/app/MainWindow.cpp"/>
+        <source>&amp;Mask</source>
+        <translation>遮罩(&amp;K)</translation>
+    </message>
+    <message>
+        <location filename="../src/app/MainWindow.cpp"/>
+        <source>&amp;Albedo</source>
+        <translation>反照率(&amp;A)</translation>
+    </message>
+    <message>
+        <location filename="../src/app/MainWindow.cpp"/>
+        <source>&amp;UV</source>
+        <translation>UV(&amp;U)</translation>
+    </message>
 </context>
 <context>
     <name>nlhc::ShipListModel</name>

@@ -16,6 +16,7 @@ public:
     QMatrix4x4 projection(float aspect) const;
 
     void orbit(float deltaYawDegrees, float deltaPitchDegrees);
+    void setAngles(float yawDegrees, float pitchDegrees);
     void zoom(float factor);
     void pan(float dxPixels, float dyPixels, float viewportHeight);
     void reset();

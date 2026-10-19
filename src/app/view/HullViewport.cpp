@@ -53,6 +53,12 @@ void HullViewport::setStyle(const RenderStyle &style)
     update();
 }
 
+void HullViewport::setOrbitAngles(float yawDegrees, float pitchDegrees)
+{
+    m_orbit.setAngles(yawDegrees, pitchDegrees);
+    update();
+}
+
 void HullViewport::resetViews()
 {
     m_side.reset();
