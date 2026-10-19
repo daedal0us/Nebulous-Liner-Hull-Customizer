@@ -10,3 +10,5 @@
 *.user
 *.autosave
 __pycache__/
+# Machine-local helpers, never published.
+/scripts/*.local.*
