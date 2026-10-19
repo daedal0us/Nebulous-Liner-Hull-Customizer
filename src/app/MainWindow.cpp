@@ -6,6 +6,7 @@
 #include <QImage>
 #include <QMenu>
 #include <QComboBox>
+#include <QDir>
 #include <QDockWidget>
 #include <QFile>
 #include <QFileDialog>
@@ -519,10 +520,18 @@ bool MainWindow::saveFile()
 
 bool MainWindow::saveFileAs()
 {
-    const QString path = QFileDialog::getSaveFileName(this, tr("Save fleet as"),
-                                                      m_document.filePath().isEmpty()
-                                                          ? QStringLiteral("fleet.fleet")
-                                                          : m_document.filePath(),
+    // Same preference as Open: the game's own folder when Steam has it, else the
+    // path of the file being edited.
+    const QString fileName = m_document.filePath().isEmpty()
+        ? QStringLiteral("fleet.fleet")
+        : QFileInfo(m_document.filePath()).fileName();
+    QString start = locateFleetFolder();
+    if (!start.isEmpty()) {
+        start = QDir(start).filePath(fileName);
+    } else if (!m_document.filePath().isEmpty()) {
+        start = m_document.filePath();
+    }
+    const QString path = QFileDialog::getSaveFileName(this, tr("Save fleet as"), start,
                                                       tr("Fleet files (*.fleet)"));
     if (path.isEmpty())
         return false;
