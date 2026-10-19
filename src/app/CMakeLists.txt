@@ -76,6 +76,8 @@ qt_add_executable(NLHC WIN32
     I18n.h
     ShipListModel.cpp
     ShipListModel.h
+    SteamLocator.cpp
+    SteamLocator.h
     HullEditorPanel.cpp
     HullEditorPanel.h
     StylePanel.cpp

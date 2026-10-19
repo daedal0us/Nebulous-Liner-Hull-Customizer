@@ -35,6 +35,7 @@
 #include "DiagnosticText.h"
 #include "HullEditorPanel.h"
 #include "ShipListModel.h"
+#include "SteamLocator.h"
 #include "StylePanel.h"
 #include "nlhc/hull/HullAssembler.h"
 #include "nlhc/hull/Validate.h"
@@ -470,7 +471,12 @@ void MainWindow::openFileDialog()
 {
     if (!confirmDiscardChanges())
         return;
-    const QString path = QFileDialog::getOpenFileName(this, tr("Open fleet"), QString(),
+    // Start where the game keeps its fleets; fall back to the folder of the file
+    // already open when Steam is not installed here.
+    QString start = locateFleetFolder();
+    if (start.isEmpty() && !m_document.filePath().isEmpty())
+        start = QFileInfo(m_document.filePath()).absolutePath();
+    const QString path = QFileDialog::getOpenFileName(this, tr("Open fleet"), start,
                                                       tr("Fleet files (*.fleet);;All files (*)"));
     if (path.isEmpty())
         return;
