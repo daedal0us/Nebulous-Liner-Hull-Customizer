@@ -794,6 +794,17 @@ void MainWindow::refreshDiagnostics()
     }
     if (diagnostics.isEmpty())
         m_diagnosticList->addItem(tr("No problems detected."));
+    // A fleet can arrive in this state, and then nothing was auto-corrected on
+    // the user's behalf - say so by opening the dock. Edits that produce one of
+    // these are repaired before they reach here, so they never open it.
+    for (const Diagnostic &diagnostic : std::as_const(diagnostics)) {
+        if (diagnostic.code == QLatin1String(diag::SecondarySnapOutOfRange)
+            || diagnostic.code == QLatin1String(diag::SecondarySegmentOutOfRange)) {
+            if (m_diagnosticDock && !m_diagnosticDock->isVisible())
+                m_diagnosticDock->show();
+            break;
+        }
+    }
     if (m_repairAction)
         m_repairAction->setEnabled(ship.editable && !diagnostics.isEmpty());
 }
@@ -805,8 +816,10 @@ void MainWindow::applyConfig(const RandomHullConfig &config)
         return;
     if (m_document.setHullConfig(row, config)) {
         refreshAssembly();
-        refreshDiagnostics();
+        // Repair before the diagnostics view is rebuilt, so the leftovers it
+        // reports are the ones worth opening the dock for.
         remediateSuperstructures(row);
+        refreshDiagnostics();
         updateWindowTitle();
     }
 }
@@ -843,8 +856,6 @@ bool MainWindow::remediateSuperstructures(int row)
                                  10000);
     }
     m_remediating = false;
-    refreshAssembly();
-    refreshDiagnostics();
     return true;
 }
 
