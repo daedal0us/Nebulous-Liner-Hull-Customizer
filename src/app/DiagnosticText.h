@@ -9,6 +9,7 @@
 namespace nlhc {
 
 QString diagnosticText(const Diagnostic &diagnostic);
+QString segmentName(int segment);
 QString readOnlyReasonText(const ShipRecord &ship, const HullPackage &package);
 
 } // namespace nlhc

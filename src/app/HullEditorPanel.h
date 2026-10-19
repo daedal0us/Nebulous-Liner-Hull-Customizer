@@ -25,6 +25,8 @@ public:
     void setHullType(const HullTypeDef *hullType);
     void setConfig(const RandomHullConfig &config);
     void setEditable(bool editable);
+    // Drops the superstructure entry of one segment, as unticking its box does.
+    void disableSecondary(int segment);
 
     const RandomHullConfig &config() const { return m_config; }
 

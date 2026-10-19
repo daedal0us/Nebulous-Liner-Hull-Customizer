@@ -394,6 +394,21 @@ void HullEditorPanel::rebuildSecondary()
     m_updating = false;
 }
 
+void HullEditorPanel::disableSecondary(int segment)
+{
+    bool removed = false;
+    for (int i = m_config.secondary.size() - 1; i >= 0; --i) {
+        if (m_config.secondary.at(i).segment == segment) {
+            m_config.secondary.remove(i);
+            removed = true;
+        }
+    }
+    if (!removed)
+        return;
+    rebuildSecondary();
+    notifyChanged();
+}
+
 void HullEditorPanel::syncFromConfig()
 {
     m_updating = true;

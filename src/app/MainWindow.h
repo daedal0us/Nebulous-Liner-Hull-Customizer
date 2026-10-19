@@ -68,6 +68,7 @@ private:
     void refreshAssembly();
     void refreshDiagnostics();
     void applyConfig(const RandomHullConfig &config);
+    bool remediateSuperstructures(int row);
     void randomizeCurrent();
     void randomizeFleet();
     void copyToSameType();
@@ -79,6 +80,7 @@ private:
     QString locateAssetsRoot() const;
     int currentShipRow() const;
 
+    bool m_remediating = false;
     HullPackage m_package;
     QString m_packageError;
     FleetDocument m_document;

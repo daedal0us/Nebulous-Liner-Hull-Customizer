@@ -21,6 +21,11 @@ QString segmentLabel(int segment)
 
 } // namespace
 
+QString segmentName(int segment)
+{
+    return segmentLabel(segment);
+}
+
 QString diagnosticText(const Diagnostic &diagnostic)
 {
     const QString code = diagnostic.code;

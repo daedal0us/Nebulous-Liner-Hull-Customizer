@@ -794,6 +794,16 @@ void MainWindow::refreshDiagnostics()
     }
     if (diagnostics.isEmpty())
         m_diagnosticList->addItem(tr("No problems detected."));
+    // Crash-level findings are worth interrupting for, even when nothing was
+    // edited since the fleet was opened.
+    for (const Diagnostic &diagnostic : std::as_const(diagnostics)) {
+        if (diagnostic.code == QLatin1String(diag::SecondarySnapOutOfRange)
+            || diagnostic.code == QLatin1String(diag::SecondarySegmentOutOfRange)) {
+            if (m_diagnosticDock && !m_diagnosticDock->isVisible())
+                m_diagnosticDock->show();
+            break;
+        }
+    }
     if (m_repairAction)
         m_repairAction->setEnabled(ship.editable && !diagnostics.isEmpty());
 }
@@ -806,8 +816,49 @@ void MainWindow::applyConfig(const RandomHullConfig &config)
     if (m_document.setHullConfig(row, config)) {
         refreshAssembly();
         refreshDiagnostics();
+        remediateSuperstructures(row);
         updateWindowTitle();
     }
+}
+
+bool MainWindow::remediateSuperstructures(int row)
+{
+    if (m_remediating || !m_package.isValid() || row < 0)
+        return false;
+    const ShipRecord ship = m_document.ship(row);
+    const auto config = m_document.hullConfig(row);
+    if (!config)
+        return false;
+
+    QVector<int> segments;
+    for (const Diagnostic &diagnostic : checkConfig(m_package, ship.hullType, *config)) {
+        if (diagnostic.code != QLatin1String(diag::SecondarySnapOutOfRange))
+            continue;
+        if (diagnostic.segment < 0 || diagnostic.segment >= RandomHullConfig::SegmentCount)
+            continue;
+        if (!segments.contains(diagnostic.segment))
+            segments.append(diagnostic.segment);
+    }
+    if (segments.isEmpty())
+        return false;
+
+    // A superstructure aimed at a mount point the segment does not have would
+    // crash the game, so drop it here rather than let it reach a save. The dock
+    // opens and the status bar says what happened, because silently editing the
+    // fleet would be worse.
+    m_remediating = true;
+    for (const int segment : std::as_const(segments)) {
+        m_editor->disableSecondary(segment);
+        statusBar()->showMessage(tr("Removed the %1 superstructure: the segment has no such mount point.")
+                                     .arg(segmentName(segment)),
+                                 10000);
+    }
+    m_remediating = false;
+    if (m_diagnosticDock && !m_diagnosticDock->isVisible())
+        m_diagnosticDock->show();
+    refreshAssembly();
+    refreshDiagnostics();
+    return true;
 }
 
 void MainWindow::randomizeCurrent()

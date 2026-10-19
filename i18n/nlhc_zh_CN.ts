@@ -376,6 +376,10 @@
         <translation>未发现问题。</translation>
     </message>
     <message>
+        <source>Removed the %1 superstructure: the segment has no such mount point.</source>
+        <translation>已移除%1的上层建筑：该区段没有这个挂载点。</translation>
+    </message>
+    <message>
         <location filename="../src/app/MainWindow.cpp" line="656"/>
         <source>Applied hull to %1 ship(s).</source>
         <translation>已应用到 %1 艘舰船。</translation>
