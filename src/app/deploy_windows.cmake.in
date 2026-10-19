@@ -6,3 +6,16 @@ execute_process(
 if(NOT _nlhc_deploy_result EQUAL 0)
     message(FATAL_ERROR "windeployqt failed: ${_nlhc_deploy_result}")
 endif()
+
+# windeployqt copies Qt modules that nothing in the binary graph imports: an
+# import scan finds no reference to Qt6Pdf or Qt6Svg outside their own plugins,
+# so both families are dead weight here (Qt6Pdf alone is 9.7 MB).
+set(_nlhc_unused
+    "Qt6Pdf.dll"
+    "Qt6Svg.dll"
+    "imageformats/qpdf.dll"
+    "imageformats/qsvg.dll"
+    "iconengines/qsvgicon.dll")
+foreach(_dead IN LISTS _nlhc_unused)
+    file(REMOVE "${CMAKE_INSTALL_PREFIX}/bin/${_dead}")
+endforeach()
