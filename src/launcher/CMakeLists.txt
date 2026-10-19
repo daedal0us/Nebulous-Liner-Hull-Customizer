@@ -35,5 +35,12 @@ set_source_files_properties("${NLHC_LAUNCHER_RC}" PROPERTIES GENERATED TRUE EXTE
 add_executable(NLHCLauncher WIN32 launcher.cpp "${NLHC_LAUNCHER_RC}")
 set_target_properties(NLHCLauncher PROPERTIES OUTPUT_NAME "${NLHC_LAUNCHER_NAME}")
 target_link_libraries(NLHCLauncher PRIVATE shell32 user32)
+
+# This executable sits at the package root, away from the Qt runtime in bin/, so it
+# must carry its own C++ runtime: otherwise a machine without MinGW on PATH stops at
+# "libgcc_s_seh-1.dll was not found" before the program ever starts.
+if(MINGW)
+    target_link_options(NLHCLauncher PRIVATE -static -static-libgcc -static-libstdc++)
+endif()
 nlhc_sign_after_build(NLHCLauncher)
 install(TARGETS NLHCLauncher RUNTIME DESTINATION .)

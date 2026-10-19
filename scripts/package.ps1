@@ -89,6 +89,35 @@ if (-not $SkipVerify) {
     Remove-Item $shot -Force -ErrorAction SilentlyContinue
     Remove-Item "$shot.log" -Force -ErrorAction SilentlyContinue
     Write-Host 'smoke test: rendered' -ForegroundColor Green
+
+    # The launcher sits at the package root with no Qt or MinGW next to it, so it is
+    # the first thing a machine without a toolchain tries to load.
+    Write-Host 'smoke test: launching the package launcher' -ForegroundColor Cyan
+    $launcher = Join-Path $staging 'Liner Hull Customizer.exe'
+    $known = @(Get-Process NLHC -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+    $savedPath = $env:PATH
+    $env:PATH = "$env:SystemRootsystem32;$env:SystemRoot"
+    $started = $false
+    try {
+        Start-Process -FilePath $launcher -WorkingDirectory $staging | Out-Null
+        for ($i = 0; $i -lt 30; $i++) {
+            Start-Sleep -Milliseconds 500
+            $fresh = @(Get-Process NLHC -ErrorAction SilentlyContinue |
+                       Where-Object { $known -notcontains $_.Id } |
+                       Select-Object -ExpandProperty Id)
+            if ($fresh.Count -gt 0) {
+                $started = $true
+                $fresh | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+                break
+            }
+        }
+    } finally {
+        $env:PATH = $savedPath
+    }
+    if (-not $started) {
+        throw 'the package launcher could not start bin/NLHC.exe; it is missing its own runtime'
+    }
+    Write-Host 'smoke test: launcher started the application' -ForegroundColor Green
 }
 
 if (-not (Test-Path (Join-Path $root $Output))) {
