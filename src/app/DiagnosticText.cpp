@@ -71,8 +71,6 @@ QString diagnosticText(const Diagnostic &diagnostic)
 
 QString readOnlyReasonText(const ShipRecord &ship, const HullPackage &package)
 {
-    if (ship.index >= 10)
-        return QCoreApplication::translate("Diagnostic", "The game only loads the first ten ships of a fleet.");
     if (!package.isValid())
         return QCoreApplication::translate("Diagnostic", "No hull asset package is loaded.");
     if (!package.isEditableHullType(ship.hullType))

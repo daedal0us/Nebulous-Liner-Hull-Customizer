@@ -94,11 +94,6 @@
         <translation>资产包中缺少某张贴图。</translation>
     </message>
     <message>
-        <location filename="../src/app/DiagnosticText.cpp" line="70"/>
-        <source>The game only loads the first ten ships of a fleet.</source>
-        <translation>游戏只会载入舰队中的前 10 艘舰船。</translation>
-    </message>
-    <message>
         <location filename="../src/app/DiagnosticText.cpp" line="72"/>
         <source>No hull asset package is loaded.</source>
         <translation>未加载船体资产包。</translation>

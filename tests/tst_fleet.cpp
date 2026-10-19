@@ -75,6 +75,7 @@ private slots:
     void keepsBackupBeforeOverwrite();
     void savesEvenWhenTheBackupIsBlocked();
     void writesAPreparedPayload();
+    void keepsLaterShipsEditable();
     void reportsMissingHullConfig();
     void reportsUnsupportedHullConfig();
     void reportsPrimaryStructureSize();
@@ -499,6 +500,38 @@ void TstFleet::followsAttachedPackage()
     QVERIFY(document.ship(0).readOnlyReason.isEmpty());
     QVERIFY(!document.ship(1).editable);
     QVERIFY(document.ship(1).readOnlyReason.contains(QStringLiteral("Some/Other Hull")));
+}
+
+void TstFleet::keepsLaterShipsEditable()
+{
+    // A read-only ship must not take its neighbours with it, and the list has no
+    // ship-count limit: previously everything past the tenth ship was disabled.
+    const QString path = QDir(m_root).filePath(QStringLiteral("long.fleet"));
+    QVector<QString> ships;
+    for (int i = 0; i < 14; ++i) {
+        const QString hull = (i == 5 || i == 6) ? QStringLiteral("Test/ReadOnly")
+                                                : QStringLiteral("Test/Dressing");
+        ships.append(test::shipXml(i, hull, test::defaultHullConfigBody()));
+    }
+    writeFleet(path, test::fleetXml(ships));
+
+    HullPackage package;
+    QVERIFY(package.load(test::createMockPackage(QDir(m_root).filePath(QStringLiteral("long-package"))), nullptr));
+
+    FleetDocument document;
+    QVERIFY(document.load(path, nullptr, nullptr));
+    document.setPackage(&package);
+    QCOMPARE(document.shipCount(), 14);
+
+    for (int i = 0; i < document.shipCount(); ++i) {
+        const ShipRecord ship = document.ship(i);
+        const bool expected = i != 5 && i != 6;
+        QVERIFY2(ship.editable == expected,
+                 qPrintable(QStringLiteral("ship %1 editable=%2 reason=%3")
+                                .arg(i)
+                                .arg(ship.editable)
+                                .arg(ship.readOnlyReason)));
+    }
 }
 
 void TstFleet::cleanupTestCase()

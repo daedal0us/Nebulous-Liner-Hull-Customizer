@@ -49,7 +49,7 @@ private slots:
     void unknownSecondaryIsReportedAndDropped();
     void secondarySegmentOutOfRangeIsReportedAndRepaired();
     void secondarySnapOutOfRangeIsReportedAndRepaired();
-    void moreThanTenShipsStayReadOnly();
+    void largeFleetsKeepEveryRowEditable();
 
     void cleanConfigProducesNoDiagnostics();
     void repairIsIdempotent();
@@ -242,25 +242,27 @@ void TstValidate::secondarySnapOutOfRangeIsReportedAndRepaired()
     QVERIFY(checkConfig(m_package, QStringLiteral("Stock/Bulk Hauler"), config).isEmpty());
 }
 
-void TstValidate::moreThanTenShipsStayReadOnly()
+void TstValidate::largeFleetsKeepEveryRowEditable()
 {
-    const QString path = writeFleet(QStringLiteral("row8-twelve.fleet"), test::defaultFleetXml(12));
+    // Fleets in the game's own save folder carry far more than ten ships, so the row
+    // position says nothing about whether a ship can be customized.
+    const QString path = writeFleet(QStringLiteral("twelve.fleet"), test::defaultFleetXml(12));
     FleetDocument document;
     QVector<Diagnostic> diagnostics;
     QVERIFY(document.load(path, &diagnostics, nullptr));
     QCOMPARE(document.shipCount(), 12);
 
     document.setPackage(&m_package);
-    for (int i = 0; i < 10; ++i)
-        QVERIFY2(document.ship(i).editable, qPrintable(QStringLiteral("ship %1 should be editable").arg(i)));
-    for (int i = 10; i < 12; ++i) {
-        QVERIFY(document.ship(i).editable == false);
-        QVERIFY(document.ship(i).readOnlyReason.contains(QStringLiteral("10")));
+    for (int i = 0; i < document.shipCount(); ++i) {
+        QVERIFY2(document.ship(i).editable,
+                 qPrintable(QStringLiteral("ship %1 should be editable: %2")
+                                .arg(i)
+                                .arg(document.ship(i).readOnlyReason)));
         QVERIFY(!document.ship(i).key.isEmpty());
     }
 
     // nothing is lost when the fleet is written back
-    const QString out = m_dir.filePath(QStringLiteral("row8-twelve-out.fleet"));
+    const QString out = m_dir.filePath(QStringLiteral("twelve-out.fleet"));
     QString error;
     QVERIFY2(document.save(out, &error), qPrintable(error));
     FleetDocument reloaded;

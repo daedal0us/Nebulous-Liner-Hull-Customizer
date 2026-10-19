@@ -15,7 +15,6 @@
 namespace nlhc {
 namespace {
 
-constexpr int kMaxPlayableShips = 10;
 constexpr int kEditorFleetVersion = 3;
 constexpr char kXsiNamespace[] = "http://www.w3.org/2001/XMLSchema-instance";
 constexpr char kRandomHullConfiguration[] = "RandomHullConfiguration";
@@ -419,8 +418,6 @@ ShipRecord FleetDocument::ship(int index) const
         return record;
     };
 
-    if (index >= kMaxPlayableShips)
-        return readOnly(QStringLiteral("The game only loads the first %1 ships of a fleet.").arg(kMaxPlayableShips));
     if (!d->package)
         return readOnly(QStringLiteral("No hull asset package is loaded."));
     if (!d->package->isEditableHullType(record.hullType))
