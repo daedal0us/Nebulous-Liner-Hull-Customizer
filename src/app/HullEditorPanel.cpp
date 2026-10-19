@@ -97,6 +97,10 @@ HullEditorPanel::HullEditorPanel(QWidget *parent)
             m_config.primary[i].dressing.clear();
             normalizeAfterPieceChange();
             rebuildDressing();
+            // A different piece can gain or lose superstructure mount points, so
+            // the rows have to follow it - otherwise a segment that just gained
+            // one stays greyed out, and one that lost one stays clickable.
+            rebuildSecondary();
             notifyChanged();
         });
         m_segmentBoxes[i] = box;

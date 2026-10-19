@@ -387,6 +387,18 @@ inline QString createMockPackage(const QString &rootDir)
         hullType[QStringLiteral("superstructures")] = QJsonArray{};
         hullTypes.append(hullType);
     }
+    {
+        // A bow choice that carries a superstructure mount point and one that does not.
+        QJsonObject hullType;
+        hullType[QStringLiteral("id")] = QStringLiteral("Test/SegmentSwitch");
+        hullType[QStringLiteral("displayName")] = QStringLiteral("Segment Switch");
+        hullType[QStringLiteral("editable")] = true;
+        hullType[QStringLiteral("bows")] = QJsonArray{QStringLiteral("p:bow"), QStringLiteral("pd:bow")};
+        hullType[QStringLiteral("cores")] = QJsonArray{QStringLiteral("p:core")};
+        hullType[QStringLiteral("sterns")] = QJsonArray{QStringLiteral("p:stern")};
+        hullType[QStringLiteral("superstructures")] = QJsonArray{QStringLiteral("p:sup")};
+        hullTypes.append(hullType);
+    }
 
     writeCatalog(rootDir, hullTypes, pieces, materials);
     return rootDir;

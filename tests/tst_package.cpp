@@ -61,7 +61,7 @@ void TstPackage::loadsMockCatalog()
     QString error;
     QVERIFY2(package.load(mockRoot(), &error), qPrintable(error));
     QVERIFY(package.isValid());
-    QCOMPARE(package.hullTypes().size(), qsizetype(3));
+    QCOMPARE(package.hullTypes().size(), qsizetype(4));
     QCOMPARE(package.pieces().size(), qsizetype(6));
     QCOMPARE(package.materials().size(), qsizetype(2));
     QCOMPARE(QDir(package.rootDir()), QDir(mockRoot()));
