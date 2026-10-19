@@ -18,7 +18,7 @@ struct RenderStyle
     // The ship shader picks between its two paint colours with a voronoi border field seeded
     // by the per-ship texture variation; the paint mask only says where paint is applied.
     QVector3D paintOffset;        // the shader's _PositionOffset, one value per ship
-    float paintThreshold = 0.7793f;  // voronoi edge band, the shader's cb2[9].z/.w
+    float paintThreshold = 0.70f;    // voronoi edge band (shader cb2[9] = 0.7793, see doc)
     float albedoDetail = 0.55f;   // how strongly the albedo modulates the paint
     float decalStrength = 0.85f;  // near-white albedo pixels kept as white markings
     float exposure = 1.12f;       // lifts the paint to the brightness the game shows
