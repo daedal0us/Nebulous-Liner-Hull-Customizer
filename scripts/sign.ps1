@@ -7,6 +7,7 @@ param(
     [switch]$Machine,
     [switch]$All,
     [switch]$SkipUnblock,
+    [switch]$TrustOnly,
     [string]$CertThumbprint = '',
     [string]$Subject = 'CN=Nebulous Liner Hull Customizer (self-signed)',
     [string]$TimestampServer = 'http://timestamp.digicert.com'
@@ -86,6 +87,11 @@ if ($Machine) {
         Add-ToStore 'Cert:\LocalMachine\Root' $cert.Thumbprint
         Add-ToStore 'Cert:\LocalMachine\TrustedPublisher' $cert.Thumbprint
     }
+}
+
+if ($TrustOnly) {
+    Write-Host 'trust stores updated; nothing was signed (-TrustOnly)' -ForegroundColor Cyan
+    return
 }
 
 $files = @()
