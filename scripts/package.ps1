@@ -73,9 +73,18 @@ if (-not $SkipVerify) {
     Write-Host 'smoke test: launching the staged copy' -ForegroundColor Cyan
     $shot = Join-Path $staging 'smoke.png'
     $sample = Join-Path $staging 'samples/container-liner-sample.fleet'
-    & (Join-Path $staging 'bin/NLHC.exe') --open $sample --ship 0 --screenshot $shot | Out-Null
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $shot)) {
-        throw 'the staged copy did not render; the package is missing a dependency'
+    # A PATH that still holds Qt or MinGW hides a deployment that forgot a DLL, so
+    # the staged copy is launched with nothing but the system directories.
+    $savedPath = $env:PATH
+    $env:PATH = "$env:SystemRootsystem32;$env:SystemRoot"
+    try {
+        & (Join-Path $staging 'bin/NLHC.exe') --open $sample --ship 0 --screenshot $shot | Out-Null
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $env:PATH = $savedPath
+    }
+    if ($exitCode -ne 0 -or -not (Test-Path $shot)) {
+        throw "the staged copy did not render (exit $exitCode); the package is missing a dependency"
     }
     Remove-Item $shot -Force -ErrorAction SilentlyContinue
     Remove-Item "$shot.log" -Force -ErrorAction SilentlyContinue

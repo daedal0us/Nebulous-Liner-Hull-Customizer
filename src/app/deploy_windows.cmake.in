@@ -1,7 +1,11 @@
+# Both binaries are handed to windeployqt: the core DLL is where the QtXml import
+# lives, and a scan that stops at the executable leaves Qt6Xml.dll behind - the app
+# then only starts on a machine that happens to have Qt on PATH.
 execute_process(
     COMMAND "@NLHC_WINDEPLOYQT@"
             --dir "${CMAKE_INSTALL_PREFIX}/bin"
             "${CMAKE_INSTALL_PREFIX}/bin/NLHC.exe"
+            "${CMAKE_INSTALL_PREFIX}/bin/NLHCCore.dll"
     RESULT_VARIABLE _nlhc_deploy_result)
 if(NOT _nlhc_deploy_result EQUAL 0)
     message(FATAL_ERROR "windeployqt failed: ${_nlhc_deploy_result}")
@@ -19,3 +23,19 @@ set(_nlhc_unused
 foreach(_dead IN LISTS _nlhc_unused)
     file(REMOVE "${CMAKE_INSTALL_PREFIX}/bin/${_dead}")
 endforeach()
+
+# A qt.conf would make the deployment relocatable; instead every dependency the
+# binaries declare is verified here, so a scan that missed one fails the build
+# rather than the user's first launch.
+set(_nlhc_required "Qt6Core.dll" "Qt6Gui.dll" "Qt6Widgets.dll" "Qt6Xml.dll"
+                   "Qt6OpenGL.dll" "Qt6OpenGLWidgets.dll"
+                   "libgcc_s_seh-1.dll" "libstdc++-6.dll" "libwinpthread-1.dll")
+set(_nlhc_missing "")
+foreach(_dll IN LISTS _nlhc_required)
+    if(NOT EXISTS "${CMAKE_INSTALL_PREFIX}/bin/${_dll}")
+        list(APPEND _nlhc_missing "${_dll}")
+    endif()
+endforeach()
+if(_nlhc_missing)
+    message(FATAL_ERROR "deployment is missing: ${_nlhc_missing}")
+endif()
