@@ -267,8 +267,8 @@
     </message>
     <message>
         <location filename="../src/app/MainWindow.cpp" line="280"/>
-        <source>&amp;About NLHC</source>
-        <translation>关于 NLHC(&amp;A)</translation>
+        <source>&amp;About Liner Hull Customizer</source>
+        <translation>关于 Liner Hull Customizer(&amp;A)</translation>
     </message>
     <message>
         <location filename="../src/app/MainWindow.cpp" line="282"/>
@@ -284,6 +284,10 @@
         <location filename="../src/app/MainWindow.cpp" line="287"/>
         <source>Diagnostics</source>
         <translation>诊断</translation>
+    </message>
+    <message>
+        <source>&amp;Diagnostics</source>
+        <translation>诊断(&amp;D)</translation>
     </message>
     <message>
         <location filename="../src/app/MainWindow.cpp" line="340"/>
@@ -348,8 +352,8 @@
     </message>
     <message>
         <location filename="../src/app/MainWindow.cpp" line="449"/>
-        <source>About NLHC</source>
-        <translation>关于 NLHC</translation>
+        <source>About Liner Hull Customizer</source>
+        <translation>关于 Liner Hull Customizer</translation>
     </message>
     <message>
         <location filename="../src/app/MainWindow.cpp" line="450"/>

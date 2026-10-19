@@ -189,6 +189,9 @@ void MainWindow::buildUi()
     m_diagnosticDock->setWidget(m_diagnosticList);
     m_diagnosticDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
     addDockWidget(Qt::BottomDockWidgetArea, m_diagnosticDock);
+    // Empty until a hull is inspected, so it starts collapsed instead of taking a
+    // quarter of the window on every launch. The View menu brings it back.
+    m_diagnosticDock->hide();
 
     m_statusLabel = new QLabel(this);
     statusBar()->addPermanentWidget(m_statusLabel);
@@ -269,6 +272,13 @@ void MainWindow::buildMenus()
     }
     setDebugViewName(QStringLiteral("off"));
 
+    if (m_diagnosticDock) {
+        m_viewMenu->addSeparator();
+        QAction *toggle = m_diagnosticDock->toggleViewAction();
+        toggle->setObjectName(QStringLiteral("diagnosticsToggleAction"));
+        m_viewMenu->addAction(toggle);
+    }
+
     m_languageMenu = menuBar()->addMenu(QString());
     m_helpMenu = menuBar()->addMenu(QString());
     m_aboutAction = m_helpMenu->addAction(QString());
@@ -319,7 +329,7 @@ void MainWindow::retranslateMenus()
     }
     m_languageMenu->setTitle(tr("&Language"));
     m_helpMenu->setTitle(tr("&Help"));
-    m_aboutAction->setText(tr("&About NLHC"));
+    m_aboutAction->setText(tr("&About Liner Hull Customizer"));
     // Driven by the language each action carries, so the order and count cannot drift out of
     // sync with what buildMenus() created.
     for (QAction *action : m_languageActions) {
@@ -335,8 +345,11 @@ void MainWindow::retranslateMenus()
             break;
         }
     }
-    if (m_diagnosticDock)
+    if (m_diagnosticDock) {
         m_diagnosticDock->setWindowTitle(tr("Diagnostics"));
+        if (auto *toggle = m_diagnosticDock->findChild<QAction *>(QStringLiteral("diagnosticsToggleAction")))
+            toggle->setText(tr("&Diagnostics"));
+    }
     if (m_filter)
         m_filter->setPlaceholderText(tr("Filter ships"));
     updateWindowTitle();
@@ -348,6 +361,7 @@ void MainWindow::applyLanguage(i18n::Language language)
     i18n::apply(qApp, language);
 
     const int row = currentShipRow();
+    const bool diagnosticsVisible = m_diagnosticDock && !m_diagnosticDock->isHidden();
     m_handlingLanguageChange = true;
     delete takeCentralWidget();
     delete m_diagnosticDock;
@@ -360,6 +374,8 @@ void MainWindow::applyLanguage(i18n::Language language)
         delete toolbar;
     buildUi();
     buildMenus();
+    if (diagnosticsVisible && m_diagnosticDock)
+        m_diagnosticDock->show();
     retranslateMenus();
     updateRecentFiles();
     updateActionsEnabled();
@@ -392,7 +408,7 @@ void MainWindow::updateWindowTitle()
 {
     const QString file = m_document.filePath().isEmpty() ? tr("No fleet") : QFileInfo(m_document.filePath()).fileName();
     const QString dirty = m_document.isDirty() ? QStringLiteral("*") : QString();
-    setWindowTitle(QStringLiteral("NLHC — %1%2").arg(file, dirty));
+    setWindowTitle(QStringLiteral("Liner Hull Customizer — %1%2").arg(file, dirty));
     if (m_saveAction)
         m_saveAction->setEnabled(!m_document.filePath().isEmpty());
 }
@@ -499,7 +515,7 @@ void MainWindow::exportImage()
 
 void MainWindow::showAbout()
 {
-    QMessageBox::about(this, tr("About NLHC"),
+    QMessageBox::about(this, tr("About Liner Hull Customizer"),
                        tr("<b>Nebulous Liner Hull Customizer</b><br/>Version %1<br/><br/>"
                           "Customizes the modular hull of the Protectorate Bulk Hauler and "
                           "Container Hauler liners in .fleet files.").arg(nlhc::versionString()));
