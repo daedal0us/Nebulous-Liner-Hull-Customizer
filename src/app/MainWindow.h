@@ -60,8 +60,12 @@ private:
     bool openFile(const QString &path);
     bool saveFile();
     bool saveFileAs();
+    enum class SaveOutcome { Saved, SaveAs, Aborted };
+    enum class SaveRecovery { Cancel, SaveAs, Elevated };
+    SaveOutcome trySave(const QString &path);
+    SaveRecovery askRecovery(const QString &error);
+    bool saveElevated(const QString &path, QString *error, QString *notice);
     void reportSaved(const QString &path, const QString &backupProblem);
-    bool reportSaveFailure(const QString &error);
     void exportImage();
     void showAbout();
 

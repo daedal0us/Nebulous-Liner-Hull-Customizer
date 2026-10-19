@@ -6,10 +6,37 @@
 #include "DemoAssembly.h"
 #include "MainWindow.h"
 #include "nlhc/Version.h"
+#include "nlhc/fleet/FleetDocument.h"
 #include "view/OffscreenRenderer.h"
 #include "view/RenderStyle.h"
 
 namespace {
+
+// Runs as the elevated helper of a save the parent was refused: the parent handed
+// over the finished bytes, the outcome travels back as an exit code plus a result
+// file beside the payload.
+int runElevatedSave(const QString &payloadPath, const QString &targetPath)
+{
+    QString message;
+    bool ok = false;
+
+    QFile payload(payloadPath);
+    if (!payload.open(QIODevice::ReadOnly)) {
+        message = payload.errorString();
+    } else {
+        const QByteArray bytes = payload.readAll();
+        payload.close();
+        QString error;
+        QString notice;
+        ok = nlhc::writeFleetFile(targetPath, bytes, &error, &notice);
+        message = ok ? notice : error;
+    }
+
+    QFile result(payloadPath + QStringLiteral(".result"));
+    if (result.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        result.write(message.toUtf8());
+    return ok ? 0 : 1;
+}
 
 QString argumentValue(const QStringList &arguments, const QString &name)
 {
@@ -36,6 +63,10 @@ int main(int argc, char *argv[])
     QApplication::setApplicationName(QStringLiteral("NLHC"));
 
     const QStringList args = app.arguments();
+
+    const int elevatedIndex = args.indexOf(QStringLiteral("--elevated-save"));
+    if (elevatedIndex >= 0 && elevatedIndex + 2 < args.size())
+        return runElevatedSave(args.at(elevatedIndex + 1), args.at(elevatedIndex + 2));
 
     if (args.contains(QStringLiteral("--render-demo"))) {
         const QString output = argumentValue(args, QStringLiteral("--render-demo"));

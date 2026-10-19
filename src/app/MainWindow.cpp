@@ -1,5 +1,16 @@
 #include "MainWindow.h"
 
+#ifdef Q_OS_WIN
+#    ifndef NOMINMAX
+#        define NOMINMAX
+#    endif
+#    ifndef WIN32_LEAN_AND_MEAN
+#        define WIN32_LEAN_AND_MEAN
+#    endif
+#    include <windows.h>
+#    include <shellapi.h>
+#endif
+
 #include <QApplication>
 #include <QCloseEvent>
 #include <QHeaderView>
@@ -21,11 +32,14 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRandomGenerator>
+#include <memory>
 #include <optional>
 #include <QScrollArea>
 #include <QSettings>
+#include <QTemporaryFile>
 #include <QShowEvent>
 #include <QSortFilterProxyModel>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QSplitter>
 #include <QStatusBar>
@@ -514,17 +528,17 @@ bool MainWindow::saveFile()
 {
     if (m_document.filePath().isEmpty())
         return saveFileAs();
-    const QString path = m_document.filePath();
-    QString error;
-    QString notice;
-    if (!m_document.save(path, &error, &notice)) {
-        if (!reportSaveFailure(error))
-            return false;
+
+    switch (trySave(m_document.filePath())) {
+    case SaveOutcome::Saved:
+        updateWindowTitle();
+        return true;
+    case SaveOutcome::SaveAs:
         return saveFileAs();
+    case SaveOutcome::Aborted:
+        break;
     }
-    updateWindowTitle();
-    reportSaved(path, notice);
-    return true;
+    return false;
 }
 
 bool MainWindow::saveFileAs()
@@ -547,19 +561,133 @@ bool MainWindow::saveFileAs()
                                                           kFileDialogOptions);
         if (path.isEmpty())
             return false;
-        QString error;
-        QString notice;
-        if (!m_document.save(path, &error, &notice)) {
-            if (!reportSaveFailure(error))
-                return false;
+        const SaveOutcome outcome = trySave(path);
+        if (outcome == SaveOutcome::SaveAs) {
             start = path;
             continue;
         }
+        if (outcome != SaveOutcome::Saved)
+            return false;
         updateRecentFiles(path);
         updateWindowTitle();
-        reportSaved(path, notice);
         return true;
     }
+}
+
+MainWindow::SaveOutcome MainWindow::trySave(const QString &path)
+{
+    QString error;
+    QString notice;
+    if (m_document.save(path, &error, &notice)) {
+        reportSaved(path, notice);
+        return SaveOutcome::Saved;
+    }
+
+    switch (askRecovery(error)) {
+    case SaveRecovery::SaveAs:
+        return SaveOutcome::SaveAs;
+    case SaveRecovery::Cancel:
+        return SaveOutcome::Aborted;
+    case SaveRecovery::Elevated:
+        break;
+    }
+
+    QString elevatedError;
+    QString elevatedNotice;
+    if (!saveElevated(path, &elevatedError, &elevatedNotice)) {
+        QMessageBox::critical(this, tr("Save failed"), elevatedError);
+        return SaveOutcome::Aborted;
+    }
+    reportSaved(path, elevatedNotice);
+    return SaveOutcome::Saved;
+}
+
+bool MainWindow::saveElevated(const QString &path, QString *error, QString *notice)
+{
+#ifdef Q_OS_WIN
+    const auto fail = [error](const QString &message) {
+        if (error)
+            *error = message;
+        return false;
+    };
+
+    // The parent was refused the write, so the finished bytes go to a staged file the
+    // elevated child can read; the child reports back through a result file next to it.
+    // Security software that guards the save folder often blocks %TEMP% too, so every
+    // plausible staging folder gets a turn before the retry is abandoned.
+    QStringList stagingDirs{QDir::tempPath(),
+                            QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation),
+                            QCoreApplication::applicationDirPath(),
+                            QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)};
+    stagingDirs.removeAll(QString());
+    stagingDirs.removeDuplicates();
+
+    const QByteArray bytes = m_document.serialized();
+    std::unique_ptr<QTemporaryFile> payload;
+    for (const QString &dir : stagingDirs) {
+        QDir().mkpath(dir);
+        auto candidate = std::make_unique<QTemporaryFile>(
+            QDir(dir).filePath(QStringLiteral("nlhc-elevated-XXXXXX.fleet")));
+        if (candidate->open() && candidate->write(bytes) == bytes.size() && candidate->flush()) {
+            candidate->close();
+            payload = std::move(candidate);
+            break;
+        }
+    }
+    if (!payload)
+        return fail(tr("Cannot stage the file for an elevated save: %1").arg(bytes.isEmpty()
+                                                                                 ? tr("the fleet is empty")
+                                                                                 : tr("every candidate folder refused it")));
+    const QString payloadPath = payload->fileName();
+    const QString resultPath = payloadPath + QStringLiteral(".result");
+
+    SHELLEXECUTEINFOW info{};
+    info.cbSize = sizeof(info);
+    info.fMask = SEE_MASK_NOCLOSEPROCESS;
+    info.nShow = SW_HIDE;
+    info.lpVerb = L"runas";
+    const std::wstring executable =
+        QDir::toNativeSeparators(QCoreApplication::applicationFilePath()).toStdWString();
+    const std::wstring parameters =
+        QStringLiteral("--elevated-save \"%1\" \"%2\"").arg(payloadPath, path).toStdWString();
+    info.lpFile = executable.c_str();
+    info.lpParameters = parameters.c_str();
+
+    if (!ShellExecuteExW(&info)) {
+        const DWORD failure = GetLastError();
+        if (failure == ERROR_CANCELLED)
+            return fail(tr("Administrator rights were declined, so nothing was written."));
+        return fail(tr("Cannot start the elevated save (error %1).").arg(int(failure)));
+    }
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    WaitForSingleObject(info.hProcess, INFINITE);
+    QApplication::restoreOverrideCursor();
+    DWORD code = 1;
+    GetExitCodeProcess(info.hProcess, &code);
+    CloseHandle(info.hProcess);
+
+    QFile result(resultPath);
+    QString message;
+    if (result.open(QIODevice::ReadOnly))
+        message = QString::fromUtf8(result.readAll()).trimmed();
+    result.close();
+    QFile::remove(resultPath);
+
+    if (code != 0)
+        return fail(message.isEmpty() ? tr("The elevated save did not complete.") : message);
+
+    if (notice)
+        *notice = message;
+    m_document.markSaved(path);
+    return true;
+#else
+    Q_UNUSED(path)
+    Q_UNUSED(notice)
+    if (error)
+        *error = tr("Saving as administrator is only available on Windows.");
+    return false;
+#endif
 }
 
 void MainWindow::reportSaved(const QString &path, const QString &backupProblem)
@@ -571,7 +699,7 @@ void MainWindow::reportSaved(const QString &path, const QString &backupProblem)
     statusBar()->showMessage(tr("Saved %1, but no backup was kept: %2").arg(path, backupProblem), 8000);
 }
 
-bool MainWindow::reportSaveFailure(const QString &error)
+MainWindow::SaveRecovery MainWindow::askRecovery(const QString &error)
 {
     QMessageBox box(this);
     box.setIcon(QMessageBox::Critical);
@@ -579,13 +707,20 @@ bool MainWindow::reportSaveFailure(const QString &error)
     box.setText(tr("The fleet could not be written."));
     box.setInformativeText(error + QStringLiteral("\n\n")
                            + tr("The folder may be read-only, or security software (antivirus, "
-                                "HIPS) may be blocking this program from writing to it. Save to "
-                                "another folder, or allow this program in that security software."));
-    QPushButton *saveAsButton = box.addButton(tr("Save as…"), QMessageBox::AcceptRole);
+                                "HIPS) may be blocking this program from writing to it. Saving as "
+                                "administrator works around both; Save As picks another folder."));
+    QPushButton *elevatedButton = box.addButton(tr("Save as administrator"), QMessageBox::AcceptRole);
+    QPushButton *saveAsButton = box.addButton(tr("Save as…"), QMessageBox::ActionRole);
     QPushButton *cancelButton = box.addButton(QMessageBox::Cancel);
     box.setEscapeButton(cancelButton);
+    box.setDefaultButton(elevatedButton);
     box.exec();
-    return box.clickedButton() == saveAsButton;
+
+    if (box.clickedButton() == elevatedButton)
+        return SaveRecovery::Elevated;
+    if (box.clickedButton() == saveAsButton)
+        return SaveRecovery::SaveAs;
+    return SaveRecovery::Cancel;
 }
 
 void MainWindow::exportImage()

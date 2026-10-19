@@ -329,8 +329,28 @@
         <translation>舰队文件无法写入。</translation>
     </message>
     <message>
-        <source>The folder may be read-only, or security software (antivirus, HIPS) may be blocking this program from writing to it. Save to another folder, or allow this program in that security software.</source>
-        <translation>原因可能是该文件夹为只读，或安全软件（杀毒软件、HIPS）阻止本程序写入。请另存到其他文件夹，或在安全软件中放行本程序。</translation>
+        <source>The folder may be read-only, or security software (antivirus, HIPS) may be blocking this program from writing to it. Saving as administrator works around both; Save As picks another folder.</source>
+        <translation>原因可能是该文件夹为只读，或安全软件（杀毒软件、HIPS）阻止本程序写入。以管理员身份保存可绕过这两者；另存为可以换到其他文件夹。</translation>
+    </message>
+    <message>
+        <source>Save as administrator</source>
+        <translation>以管理员身份保存</translation>
+    </message>
+    <message>
+        <source>Cannot stage the file for an elevated save: %1</source>
+        <translation>无法为提权保存准备临时文件：%1</translation>
+    </message>
+    <message>
+        <source>Administrator rights were declined, so nothing was written.</source>
+        <translation>已取消管理员授权，文件未写入。</translation>
+    </message>
+    <message>
+        <source>Cannot start the elevated save (error %1).</source>
+        <translation>无法启动提权保存（错误 %1）。</translation>
+    </message>
+    <message>
+        <source>The elevated save did not complete.</source>
+        <translation>提权保存未能完成。</translation>
     </message>
     <message>
         <source>Save as…</source>
