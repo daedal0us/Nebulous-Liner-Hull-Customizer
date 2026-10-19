@@ -583,23 +583,16 @@ MainWindow::SaveOutcome MainWindow::trySave(const QString &path)
         return SaveOutcome::Saved;
     }
 
-    switch (askRecovery(error)) {
-    case SaveRecovery::SaveAs:
-        return SaveOutcome::SaveAs;
-    case SaveRecovery::Cancel:
-        return SaveOutcome::Aborted;
-    case SaveRecovery::Elevated:
-        break;
-    }
-
+    // A refused write is nearly always a rights problem, so the automatic retry is
+    // the elevated one; only when that fails too does the user have to decide.
     QString elevatedError;
     QString elevatedNotice;
-    if (!saveElevated(path, &elevatedError, &elevatedNotice)) {
-        QMessageBox::critical(this, tr("Save failed"), elevatedError);
-        return SaveOutcome::Aborted;
+    if (saveElevated(path, &elevatedError, &elevatedNotice)) {
+        reportSaved(path, elevatedNotice);
+        return SaveOutcome::Saved;
     }
-    reportSaved(path, elevatedNotice);
-    return SaveOutcome::Saved;
+
+    return askSaveElsewhere(error, elevatedError) ? SaveOutcome::SaveAs : SaveOutcome::Aborted;
 }
 
 bool MainWindow::saveElevated(const QString &path, QString *error, QString *notice)
@@ -653,14 +646,17 @@ bool MainWindow::saveElevated(const QString &path, QString *error, QString *noti
     info.lpFile = executable.c_str();
     info.lpParameters = parameters.c_str();
 
+    // The consent prompt is modal on the secure desktop, so the cursor is set before
+    // the call: the window behind it should already look busy when focus returns.
+    QApplication::setOverrideCursor(Qt::WaitCursor);
     if (!ShellExecuteExW(&info)) {
+        QApplication::restoreOverrideCursor();
         const DWORD failure = GetLastError();
         if (failure == ERROR_CANCELLED)
             return fail(tr("Administrator rights were declined, so nothing was written."));
         return fail(tr("Cannot start the elevated save (error %1).").arg(int(failure)));
     }
 
-    QApplication::setOverrideCursor(Qt::WaitCursor);
     WaitForSingleObject(info.hProcess, INFINITE);
     QApplication::restoreOverrideCursor();
     DWORD code = 1;
@@ -699,28 +695,24 @@ void MainWindow::reportSaved(const QString &path, const QString &backupProblem)
     statusBar()->showMessage(tr("Saved %1, but no backup was kept: %2").arg(path, backupProblem), 8000);
 }
 
-MainWindow::SaveRecovery MainWindow::askRecovery(const QString &error)
+bool MainWindow::askSaveElsewhere(const QString &error, const QString &elevatedError)
 {
     QMessageBox box(this);
     box.setIcon(QMessageBox::Critical);
     box.setWindowTitle(tr("Save failed"));
     box.setText(tr("The fleet could not be written."));
     box.setInformativeText(error + QStringLiteral("\n\n")
-                           + tr("The folder may be read-only, or security software (antivirus, "
-                                "HIPS) may be blocking this program from writing to it. Saving as "
-                                "administrator works around both; Save As picks another folder."));
-    QPushButton *elevatedButton = box.addButton(tr("Save as administrator"), QMessageBox::AcceptRole);
-    QPushButton *saveAsButton = box.addButton(tr("Save as…"), QMessageBox::ActionRole);
+                           + tr("The elevated retry failed too: %1").arg(elevatedError)
+                           + QStringLiteral("\n\n")
+                           + tr("The folder may be read-only, or security software may be blocking "
+                                "this program from writing to it. Save the fleet to another folder "
+                                "instead."));
+    QPushButton *saveAsButton = box.addButton(tr("Save as…"), QMessageBox::AcceptRole);
     QPushButton *cancelButton = box.addButton(QMessageBox::Cancel);
     box.setEscapeButton(cancelButton);
-    box.setDefaultButton(elevatedButton);
+    box.setDefaultButton(saveAsButton);
     box.exec();
-
-    if (box.clickedButton() == elevatedButton)
-        return SaveRecovery::Elevated;
-    if (box.clickedButton() == saveAsButton)
-        return SaveRecovery::SaveAs;
-    return SaveRecovery::Cancel;
+    return box.clickedButton() == saveAsButton;
 }
 
 void MainWindow::exportImage()

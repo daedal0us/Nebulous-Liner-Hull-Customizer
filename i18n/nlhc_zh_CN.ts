@@ -329,12 +329,12 @@
         <translation>舰队文件无法写入。</translation>
     </message>
     <message>
-        <source>The folder may be read-only, or security software (antivirus, HIPS) may be blocking this program from writing to it. Saving as administrator works around both; Save As picks another folder.</source>
-        <translation>原因可能是该文件夹为只读，或安全软件（杀毒软件、HIPS）阻止本程序写入。以管理员身份保存可绕过这两者；另存为可以换到其他文件夹。</translation>
+        <source>The folder may be read-only, or security software may be blocking this program from writing to it. Save the fleet to another folder instead.</source>
+        <translation>原因可能是该文件夹为只读，或安全软件阻止本程序写入。请改为另存到其他文件夹。</translation>
     </message>
     <message>
-        <source>Save as administrator</source>
-        <translation>以管理员身份保存</translation>
+        <source>The elevated retry failed too: %1</source>
+        <translation>提权后仍然失败：%1</translation>
     </message>
     <message>
         <source>Cannot stage the file for an elevated save: %1</source>
