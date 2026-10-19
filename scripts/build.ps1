@@ -44,6 +44,12 @@ if (-not $SkipTests) {
 
 if ($Deploy) {
     $distDir = Join-Path $root $Prefix
+    # cmake --install only adds and overwrites, so a leftover tree keeps files
+    # that the current asset export no longer produces. Rebuild it from scratch.
+    if (Test-Path $distDir) {
+        Write-Host "== clean ($distDir)" -ForegroundColor Cyan
+        Remove-Item $distDir -Recurse -Force
+    }
     Write-Host "== install ($distDir)" -ForegroundColor Cyan
     & $cmake --install $buildDir --prefix $distDir
     if ($LASTEXITCODE -ne 0) { throw 'install failed' }
