@@ -37,6 +37,35 @@ set(NLHC_QRC_FILE "${CMAKE_CURRENT_BINARY_DIR}/nlhc_translations.qrc")
 file(WRITE "${NLHC_QRC_FILE}"
     "<RCC><qresource prefix=\"/\"><file alias=\"i18n/nlhc_zh_CN.qm\">${NLHC_QM_FILE}</file></qresource></RCC>\n")
 
+# Application manifest (asInvoker + per-monitor DPI + long paths) and version
+# resource. Without a manifest Windows applies installer heuristics and shows
+# "unknown publisher" elevation prompts for a binary that never asks for them.
+#
+# windres is driven by hand: the RC language rule passes the target's include
+# directories as -I flags, and this source tree lives under a path with spaces,
+# which splits those flags mid-path. The .rc is generated into the build tree
+# (no spaces) and needs no -I at all.
+if(WIN32)
+    if(NOT CMAKE_RC_COMPILER)
+        find_program(NLHC_WINDRES windres REQUIRED)
+        set(CMAKE_RC_COMPILER "${NLHC_WINDRES}")
+    endif()
+    set(NLHC_MANIFEST_VERSION "${PROJECT_VERSION}.0")
+    set(NLHC_VERSION_COMMA "${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},0")
+    configure_file(nlhc.rc.in "${CMAKE_CURRENT_BINARY_DIR}/nlhc.rc" @ONLY)
+    set(NLHC_RESOURCE_FILE "${CMAKE_CURRENT_BINARY_DIR}/nlhc_rc.obj")
+    add_custom_command(
+        OUTPUT "${NLHC_RESOURCE_FILE}"
+        COMMAND "${CMAKE_RC_COMPILER}" -i "${CMAKE_CURRENT_BINARY_DIR}/nlhc.rc" -o "${NLHC_RESOURCE_FILE}" -O coff
+        DEPENDS nlhc.rc.in "${CMAKE_CURRENT_BINARY_DIR}/nlhc.rc"
+        COMMENT "Compiling nlhc.rc (manifest + version info)"
+        VERBATIM
+    )
+    set_source_files_properties("${NLHC_RESOURCE_FILE}" PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
+else()
+    set(NLHC_RESOURCE_FILE "")
+endif()
+
 qt_add_executable(NLHC WIN32
     main.cpp
     MainWindow.cpp
@@ -52,6 +81,7 @@ qt_add_executable(NLHC WIN32
     DiagnosticText.cpp
     DiagnosticText.h
     ${NLHC_QRC_FILE}
+    ${NLHC_RESOURCE_FILE}
 )
 add_dependencies(NLHC nlhc_translations)
 target_compile_definitions(NLHC PRIVATE NLHC_SOURCE_DIR="${CMAKE_SOURCE_DIR}")

@@ -5,6 +5,7 @@ param(
     [switch]$SkipTests,
     [switch]$Deploy,
     [switch]$Sign,
+    [switch]$NoTrust,
     [string]$Prefix = 'dist'
 )
 
@@ -41,8 +42,16 @@ if ($Deploy) {
 }
 
 if ($Sign) {
-    Write-Host '== sign release binaries' -ForegroundColor Cyan
-    & (Join-Path $PSScriptRoot 'sign.ps1') -DistDir $Prefix
+    # Both copies get signed: the packaged one that ships, and the build-tree one
+    # that is double-clicked while iterating (Windows judges whichever gets
+    # launched, and a relink drops the previous signature).
+    Write-Host '== sign binaries' -ForegroundColor Cyan
+    $signArgs = @{
+        DistDir   = $(if ($Deploy) { $Prefix } else { '' })
+        BuildDir  = "build/$Preset"
+        TrustCert = -not $NoTrust
+    }
+    & (Join-Path $PSScriptRoot 'sign.ps1') @signArgs
     if ($LASTEXITCODE -ne 0) { throw 'signing failed' }
 }
 
